@@ -1,222 +1,450 @@
-// tools/mongo.js
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import { z } from "zod";
 import { tool } from "@openai/agents";
 import "dotenv/config";
 
 let client;
 
-/**
- * DB connection helper
- * - validates env
- * - lazy connects
- */
 async function db() {
-  if (!process.env.MONGO_URI) {
-    throw new Error(
-      "MONGO_URI is not set. Add MONGO_URI to your .env (mongodb+srv://... or mongodb://...)"
-    );
-  }
-  if (!process.env.MONGO_DB_NAME) {
-    throw new Error(
-      "MONGO_DB_NAME is not set. Add MONGO_DB_NAME to your .env"
-    );
-  }
-
   if (!client) {
-    client = new MongoClient(process.env.MONGO_URI, { connectTimeoutMS: 10000 });
+    client = new MongoClient(process.env.MONGO_URI);
     await client.connect();
   }
-  return client.db(process.env.MONGO_DB_NAME);
+  return client.db(process.env.MONGO_DB);
 }
 
-/**
- * A safe JSON scalar union for values. Using simple scalar union keeps JSON schema valid for OpenAI.
- */
-const JSONScalar = z.union([z.string(), z.number(), z.boolean(), z.null()]);
-
-/**
- * A flexible object with scalar values. Using catchall ensures JSON Schema has type: object
- * and additionalProperties of allowed scalar types.
- */
-const ScalarObject = z.object({}).catchall(JSONScalar).nullable();
-
-/**
- * A standardized response format used by all tools
- */
-function okResponse(op, collection, data = null, message = "") {
-  return {
-    status: "success",
-    operation: op,
-    collection,
-    data,
-    message,
-  };
-}
-function errorResponse(op, collection, message) {
-  return {
-    status: "error",
-    operation: op,
-    collection,
-    data: null,
-    message,
-  };
+async function collectionExists(collectionName) {
+  const database = await db();
+  const collections = await database.listCollections({ name: collectionName }).toArray();
+  return collections.length > 0;
 }
 
-/**
- * create_collection: create a named collection if not exists.
- * - parameters are required and explicit
- */
+// Helper to parse JSON strings in parameters
+function parseJSONField(field) {
+  if (typeof field === "string") {
+    try {
+      return JSON.parse(field);
+    } catch {
+      return field;
+    }
+  }
+  return field;
+}
+
+export const listCollections = tool({
+  name: "list_collections",
+  description: "List all collections in the database. Use this to verify collection names before operations.",
+  parameters: z.object({}),
+  async execute() {
+    console.log("---------------------------------------------------");
+    console.log("Listing all collections");
+    try {
+      const database = await db();
+      const collections = await database.listCollections().toArray();
+      const names = collections.map((c) => c.name);
+      return {
+        status: "success",
+        operation: "list_collections",
+        data: names,
+        message: `Found ${names.length} collection(s): ${names.join(", ") || "none"}`,
+      };
+    } catch (err) {
+      console.error("❌ List collections error:", err);
+      return {
+        status: "error",
+        operation: "list_collections",
+        data: null,
+        message: `Failed to list collections: ${err.message}`,
+      };
+    }
+  },
+});
+
 export const createCollection = tool({
   name: "create_collection",
-  description:
-    "Create a new MongoDB collection. Parameters: { name: string }",
+  description: "Create a new MongoDB collection. Check with list_collections first to avoid duplicates.",
   parameters: z.object({
-    name: z.string().min(1).describe("The name of the collection to create."),
+    name: z
+      .string()
+      .min(1)
+      .describe("The name of the collection to create (must be non-empty)."),
   }),
   async execute({ name }) {
-    console.log("[tool:create_collection] create:", name);
+    console.log("---------------------------------------------------");
+    console.log(`Creating collection: ${name}`);
     try {
-      const database = await db();
-      // createCollection throws if already exists; ensure existence check
-      const existing = await database.listCollections({ name }).hasNext();
-      if (!existing) {
-        await database.createCollection(name);
-        return okResponse("create", name, null, `Collection '${name}' created.`);
-      } else {
-        return okResponse("create", name, null, `Collection '${name}' already exists.`);
+      const exists = await collectionExists(name);
+      if (exists) {
+        return {
+          status: "error",
+          operation: "create",
+          collection: name,
+          data: null,
+          message: `Collection '${name}' already exists. No action taken.`,
+        };
       }
+
+      const database = await db();
+      await database.createCollection(name);
+      return {
+        status: "success",
+        operation: "create",
+        collection: name,
+        data: null,
+        message: `Collection '${name}' created successfully.`,
+      };
     } catch (err) {
-      console.error("[create_collection] error:", err);
-      return errorResponse("create", name, `Failed to create collection: ${err.message}`);
+      console.error("❌ Create collection error:", err);
+      return {
+        status: "error",
+        operation: "create",
+        collection: name,
+        data: null,
+        message: `Failed to create collection: ${err.message}`,
+      };
     }
   },
 });
 
-/**
- * insert_one: insert a flat scalar-valued document
- * - document must be provided (required)
- */
 export const insertOne = tool({
   name: "insert_one",
-  description:
-    "Insert a document into a MongoDB collection. Provide a flat key/value JSON document (scalars only).",
+  description: "Insert a document into a MongoDB collection. Collection must exist first. Pass document as JSON string or object.",
   parameters: z.object({
-    collection: z.string().min(1),
-    document: ScalarObject.describe("A flat JSON document with scalar values."),
+    collection: z.string().min(1).describe("The name of the collection."),
+    document: z
+      .string()
+      .describe("A JSON string representing the document to insert. Example: '{\"name\":\"John\",\"age\":30}'"),
   }),
   async execute({ collection, document }) {
-    console.log("[tool:insert_one] collection:", collection, "document:", document);
+    console.log("---------------------------------------------------");
+    console.log(`Inserting document into collection: ${collection}`);
     try {
-      const database = await db();
-      // auto-create collection if needed
-      const colExists = await database.listCollections({ name: collection }).hasNext();
-      if (!colExists) {
-        await database.createCollection(collection);
+      const exists = await collectionExists(collection);
+      if (!exists) {
+        return {
+          status: "error",
+          operation: "insert",
+          collection,
+          data: null,
+          message: `Collection '${collection}' does not exist. Create it first using create_collection.`,
+        };
       }
-      const result = await database.collection(collection).insertOne(document);
-      return okResponse("insert", collection, { insertedId: result.insertedId }, "Document inserted.");
+
+      const parsedDoc = parseJSONField(document);
+      const database = await db();
+      const result = await database.collection(collection).insertOne(parsedDoc);
+      
+      return {
+        status: "success",
+        operation: "insert",
+        collection,
+        data: {
+          insertedId: result.insertedId.toString(),
+          document: { _id: result.insertedId, ...parsedDoc },
+        },
+        message: `Document inserted successfully with ID: ${result.insertedId}`,
+      };
     } catch (err) {
-      console.error("[insert_one] error:", err);
-      return errorResponse("insert", collection, `Insert failed: ${err.message}`);
+      console.error("❌ Insert error:", err);
+      return {
+        status: "error",
+        operation: "insert",
+        collection,
+        data: null,
+        message: `Failed to insert document: ${err.message}`,
+      };
     }
   },
 });
 
-/**
- * find_documents: query with nullable flat filters
- * - query: nullable - default null -> match all
- */
 export const findDocuments = tool({
   name: "find_documents",
-  description:
-    "Find documents in a collection. Use a flat key/value filter (scalars). If query is null, all documents are returned.",
+  description: "Find documents in a collection. Pass query as JSON string. Use '{}' for all documents. Supports MongoDB operators like $gt, $lt, $in, etc.",
   parameters: z.object({
-    collection: z.string().min(1),
-    query: ScalarObject.default(null).describe("Flat filter object or null for all documents."),
-    limit: z.number().int().positive().max(1000).nullable().describe("Optional limit on returned documents (default none)."),
+    collection: z.string().min(1).describe("The name of the collection."),
+    query: z
+      .string()
+      .default("{}")
+      .describe(
+        "MongoDB filter query as JSON string. Examples: '{\"name\":\"John\"}', '{\"age\":{\"$gt\":25}}', '{\"_id\":\"507f1f77bcf86cd799439011\"}'. Use '{}' for all documents."
+      ),
+    limit: z
+      .number()
+      .int()
+      .positive()
+      .max(1000)
+      .optional()
+      .default(100)
+      .describe("Maximum number of documents to return (default: 100, max: 1000)."),
   }),
   async execute({ collection, query, limit }) {
-    console.log("[tool:find_documents] collection:", collection, "query:", query, "limit:", limit);
+    console.log("---------------------------------------------------");
+    console.log(`Finding documents in collection: ${collection} with query:`, query);
     try {
-      const database = await db();
-      const col = database.collection(collection);
-      // If collection doesn't exist — return empty result but not an exception
-      const exists = await database.listCollections({ name: collection }).hasNext();
+      const exists = await collectionExists(collection);
       if (!exists) {
-        return okResponse("find", collection, [], `Collection '${collection}' does not exist.`);
+        return {
+          status: "error",
+          operation: "find",
+          collection,
+          data: null,
+          message: `Collection '${collection}' does not exist. Available collections can be checked with list_collections.`,
+        };
       }
-      const cursor = col.find(query ?? {});
-      if (limit) cursor.limit(limit);
-      const results = await cursor.toArray();
-      return okResponse("find", collection, results, `${results.length} documents found.`);
-    } catch (err) {
-      console.error("[find_documents] error:", err);
-      return errorResponse("find", collection, `Find failed: ${err.message}`);
-    }
-  },
-});
 
-/**
- * update_one: update first matching document
- * - filter & update are required and must be scalar-objects
- */
-export const updateOne = tool({
-  name: "update_one",
-  description: "Update a document in a collection using a filter.",
-  parameters: z.object({
-    collection: z.string(),
-    filter: JSONScalar.describe("Filter: key/value fields"),
-    update: JSONScalar.describe("Fields to update (flat key/value fields)"),
-  }),
-  async execute({ collection, filter, update }) {
-    try {
+      // Parse query string to object
+      let parsedQuery = {};
+      try {
+        parsedQuery = JSON.parse(query);
+      } catch (e) {
+        return {
+          status: "error",
+          operation: "find",
+          collection,
+          data: null,
+          message: `Invalid query JSON format: ${e.message}`,
+        };
+      }
+
+      // Handle _id query with ObjectId conversion
+      if (parsedQuery._id && typeof parsedQuery._id === "string") {
+        try {
+          parsedQuery._id = new ObjectId(parsedQuery._id);
+        } catch (e) {
+          return {
+            status: "error",
+            operation: "find",
+            collection,
+            data: null,
+            message: `Invalid ObjectId format: ${parsedQuery._id}`,
+          };
+        }
+      }
+
       const database = await db();
-      
-      // ✔ ALWAYS wrap update inside $set
-      const mongoUpdate = { $set: update };
+      const results = await database
+        .collection(collection)
+        .find(parsedQuery)
+        .limit(limit)
+        .toArray();
 
-      const result = await database.collection(collection).updateOne(filter, mongoUpdate);
+      // Convert ObjectId to string for JSON serialization
+      const serializedResults = results.map((doc) => ({
+        ...doc,
+        _id: doc._id.toString(),
+      }));
 
       return {
         status: "success",
-        operation: "update_one",
+        operation: "find",
+        collection,
+        data: serializedResults,
+        count: serializedResults.length,
+        message: `Found ${serializedResults.length} document(s)${serializedResults.length === limit ? ` (limited to ${limit})` : ""}.`,
+      };
+    } catch (err) {
+      console.error("❌ MongoDB find error:", err);
+      return {
+        status: "error",
+        operation: "find",
+        collection,
+        data: null,
+        message: `Failed to retrieve data from '${collection}': ${err.message}`,
+      };
+    }
+  },
+});
+
+export const updateOne = tool({
+  name: "update_one",
+  description: "Update a single document in a collection. IMPORTANT: Use find_documents first to verify which document will be updated. Pass filter and update as JSON strings.",
+  parameters: z.object({
+    collection: z.string().min(1).describe("The name of the collection."),
+    filter: z
+      .string()
+      .describe("Filter to match the document as JSON string. Example: '{\"_id\":\"507f1f77bcf86cd799439011\"}' or '{\"name\":\"John\"}'"),
+    update: z
+      .string()
+      .describe("Fields to update with new values as JSON string. Example: '{\"age\":31,\"city\":\"NYC\"}'"),
+  }),
+  async execute({ collection, filter, update }) {
+    console.log("---------------------------------------------------");
+    console.log(`Updating document in collection: ${collection}`);
+    try {
+      const exists = await collectionExists(collection);
+      if (!exists) {
+        return {
+          status: "error",
+          operation: "update",
+          collection,
+          data: null,
+          message: `Collection '${collection}' does not exist.`,
+        };
+      }
+
+      // Parse filter and update strings
+      let parsedFilter, parsedUpdate;
+      try {
+        parsedFilter = JSON.parse(filter);
+        parsedUpdate = JSON.parse(update);
+      } catch (e) {
+        return {
+          status: "error",
+          operation: "update",
+          collection,
+          data: null,
+          message: `Invalid JSON format: ${e.message}`,
+        };
+      }
+
+      // Handle _id filter with ObjectId conversion
+      if (parsedFilter._id && typeof parsedFilter._id === "string") {
+        try {
+          parsedFilter._id = new ObjectId(parsedFilter._id);
+        } catch (e) {
+          return {
+            status: "error",
+            operation: "update",
+            collection,
+            data: null,
+            message: `Invalid ObjectId format in filter: ${parsedFilter._id}`,
+          };
+        }
+      }
+
+      const database = await db();
+      
+      // First, find the document to show what will be updated
+      const existingDoc = await database.collection(collection).findOne(parsedFilter);
+      
+      if (!existingDoc) {
+        return {
+          status: "error",
+          operation: "update",
+          collection,
+          data: { matched: 0, modified: 0 },
+          message: "No document matches the filter. Update aborted.",
+        };
+      }
+
+      const result = await database
+        .collection(collection)
+        .updateOne(parsedFilter, { $set: parsedUpdate });
+
+      return {
+        status: "success",
+        operation: "update",
         collection,
         data: {
           matched: result.matchedCount,
           modified: result.modifiedCount,
+          documentId: existingDoc._id.toString(),
+          updatedFields: Object.keys(parsedUpdate),
         },
+        message: `Updated ${result.modifiedCount} document(s). Matched: ${result.matchedCount}`,
       };
     } catch (err) {
+      console.error("❌ Update error:", err);
       return {
         status: "error",
-        operation: "update_one",
+        operation: "update",
         collection,
-        message: err.message,
+        data: null,
+        message: `Failed to update document: ${err.message}`,
       };
     }
   },
 });
 
-/**
- * delete_one: delete first matching document
- */
 export const deleteOne = tool({
   name: "delete_one",
-  description: "Delete one document matching the filter.",
+  description: "Delete a single document from a collection. IMPORTANT: Use find_documents first to verify which document will be deleted. Pass filter as JSON string.",
   parameters: z.object({
-    collection: z.string().min(1),
-    filter: ScalarObject.describe("Filter object to match the doc to delete."),
+    collection: z.string().min(1).describe("The name of the collection."),
+    filter: z
+      .string()
+      .describe("Filter to match the document as JSON string. Example: '{\"_id\":\"507f1f77bcf86cd799439011\"}' or '{\"email\":\"user@example.com\"}'"),
   }),
   async execute({ collection, filter }) {
-    console.log("[tool:delete_one] collection:", collection, "filter:", filter);
+    console.log("---------------------------------------------------");
+    console.log(`Deleting document from collection: ${collection}`);
     try {
+      const exists = await collectionExists(collection);
+      if (!exists) {
+        return {
+          status: "error",
+          operation: "delete",
+          collection,
+          data: null,
+          message: `Collection '${collection}' does not exist.`,
+        };
+      }
+
+      // Parse filter string
+      let parsedFilter;
+      try {
+        parsedFilter = JSON.parse(filter);
+      } catch (e) {
+        return {
+          status: "error",
+          operation: "delete",
+          collection,
+          data: null,
+          message: `Invalid filter JSON format: ${e.message}`,
+        };
+      }
+
+      // Handle _id filter with ObjectId conversion
+      if (parsedFilter._id && typeof parsedFilter._id === "string") {
+        try {
+          parsedFilter._id = new ObjectId(parsedFilter._id);
+        } catch (e) {
+          return {
+            status: "error",
+            operation: "delete",
+            collection,
+            data: null,
+            message: `Invalid ObjectId format in filter: ${parsedFilter._id}`,
+          };
+        }
+      }
+
       const database = await db();
-      const result = await database.collection(collection).deleteOne(filter);
-      return okResponse("delete", collection, { deleted: result.deletedCount }, "Delete executed.");
+      
+      // First, find the document to show what will be deleted
+      const existingDoc = await database.collection(collection).findOne(parsedFilter);
+      
+      if (!existingDoc) {
+        return {
+          status: "error",
+          operation: "delete",
+          collection,
+          data: { deleted: 0 },
+          message: "No document matches the filter. Delete aborted.",
+        };
+      }
+
+      const result = await database.collection(collection).deleteOne(parsedFilter);
+
+      return {
+        status: "success",
+        operation: "delete",
+        collection,
+        data: {
+          deleted: result.deletedCount,
+          deletedDocumentId: existingDoc._id.toString(),
+        },
+        message: `Deleted ${result.deletedCount} document(s).`,
+      };
     } catch (err) {
-      console.error("[delete_one] error:", err);
-      return errorResponse("delete", collection, `Delete failed: ${err.message}`);
+      console.error("❌ Delete error:", err);
+      return {
+        status: "error",
+        operation: "delete",
+        collection,
+        data: null,
+        message: `Failed to delete document: ${err.message}`,
+      };
     }
   },
 });
