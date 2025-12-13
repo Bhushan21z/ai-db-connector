@@ -1,16 +1,10 @@
 import { Agent } from "@openai/agents";
-import {
-  createCollection,
-  insertOne,
-  findDocuments,
-  updateOne,
-  deleteOne,
-  listCollections,
-} from "./tools/mongo.js";
+import { createMongoTools } from "./tools/mongo.js";
 
-export const mongoAgent = new Agent({
-  name: "MongoDB Agent",
-  instructions: `
+export const createMongoAgent = (database) => {
+  return new Agent({
+    name: "MongoDB Agent",
+    instructions: `
 You are an intelligent MongoDB assistant that performs CRUD operations with precision.
 
 CRITICAL RULES:
@@ -38,14 +32,8 @@ ERROR HANDLING:
 - If collection doesn't exist for read/update/delete: inform user and suggest creating it
 - If filter matches 0 documents: inform user clearly
 - If operation fails: provide specific error message and suggest fixes
-  `,
-  model: "gpt-4o-mini",
-  tools: [
-    listCollections,
-    findDocuments,
-    createCollection,
-    insertOne,
-    updateOne,
-    deleteOne,
-  ],
-});
+    `,
+    model: "gpt-4o-mini",
+    tools: createMongoTools(database),
+  });
+};

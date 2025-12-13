@@ -4,7 +4,7 @@ import cors from "cors";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { MongoClient, ObjectId } from "mongodb";
-import { mongoAgent } from "./agent.js";
+import { createMongoAgent } from "./agent.js";
 import { run } from "@openai/agents";
 import "dotenv/config";
 
@@ -67,10 +67,10 @@ app.post("/auth/register", async (req, res) => {
     createdAt: new Date(),
   });
 
-  res.json({ 
-    success: true, 
+  res.json({
+    success: true,
     message: "User registered successfully.",
-    id: result.insertedId 
+    id: result.insertedId
   });
 });
 
@@ -89,8 +89,8 @@ app.post("/auth/login", async (req, res) => {
 
   const token = generateJwt({ email: user.email, id: user._id.toString() });
 
-  res.json({ 
-    success: true, 
+  res.json({
+    success: true,
     token,
     email: user.email,
     id: user._id.toString()
@@ -158,19 +158,21 @@ app.post("/mongo", async (req, res) => {
       const userClient = new MongoClient(userData.mongo.uri);
       await userClient.connect();
       const db = userClient.db(userData.mongo.db);
-      
+
       // Example: List collections
       const collections = await db.listCollections().toArray();
       const collectionNames = collections.map(col => col.name);
-      
+
       // Simple response based on common queries
       let response = `Connected to database: ${userData.mongo.db}\n`;
       response += `Available collections: ${collectionNames.join(', ')}\n\n`;
-      
+
       console.log("📩 Mongo Prompt:", prompt);
 
+      // Create a dynamic agent for this request using the user's database connection
+      const mongoAgent = createMongoAgent(db);
       const result = await run(mongoAgent, prompt);
-      
+
       await userClient.close();
 
       res.json({
@@ -182,9 +184,9 @@ app.post("/mongo", async (req, res) => {
 
     } catch (dbError) {
       console.error("❌ Database Error:", dbError);
-      res.status(500).json({ 
-        success: false, 
-        error: `Database connection failed: ${dbError.message}` 
+      res.status(500).json({
+        success: false,
+        error: `Database connection failed: ${dbError.message}`
       });
     }
 
