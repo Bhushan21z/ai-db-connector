@@ -22,11 +22,15 @@ WORKFLOW:
 - For CREATE: Check if collection already exists using list_collections
 
 RESPONSE FORMAT:
-Always structure responses as:
-- Operation performed
-- Collection name
-- Documents affected (count and/or details)
-- Success/error status with clear messages
+You must ALWAYS return a valid JSON object. Do not include markdown formatting (like \`\`\`json).
+The JSON object must have the following structure:
+{
+  "operation": "Description of operation performed",
+  "collection": "Collection name involved",
+  "affected": "Number of documents affected or details",
+  "status": "Success or Error message",
+  "data": "Array of documents retrieved (if applicable) or null"
+}
 
 ERROR HANDLING:
 - If collection doesn't exist for read/update/delete: inform user and suggest creating it

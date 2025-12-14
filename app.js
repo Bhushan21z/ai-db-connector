@@ -98,87 +98,171 @@ app.post("/auth/login", async (req, res) => {
 });
 
 // -----------------------------------------------------
-// POST /auth/token
-// User provides Mongo Provider + URI → returns service token
+// USER CONFIG ENDPOINTS
 // -----------------------------------------------------
-app.post("/auth/token", authMiddleware, async (req, res) => {
-  const { provider, mongoUri, dbName } = req.body;
 
-  if (!provider || !mongoUri)
-    return res.status(400).json({
-      error: "provider and mongoUri are required to generate service token.",
+// GET /user/config - Retrieve DB credentials
+app.get("/user/config", authMiddleware, async (req, res) => {
+  try {
+    const user = await usersCollection.findOne({ _id: new ObjectId(req.user.id) });
+    if (!user) return res.status(404).json({ error: "User not found." });
+
+    res.json({
+      success: true,
+      config: user.dbConfig || null
     });
+  } catch (err) {
+    console.error("❌ GET /user/config Error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
-  const serviceToken = generateJwt(
-    {
-      email: req.user.email,
-      userId: req.user.id,
-      mongo: {
-        provider,
-        uri: mongoUri,
-        db: dbName || "default_db",
+// POST /user/config - Save DB credentials
+app.post("/user/config", authMiddleware, async (req, res) => {
+  const { provider, uri, dbName } = req.body;
+
+  if (!provider || !uri || !dbName) {
+    return res.status(400).json({ error: "Missing required fields." });
+  }
+
+  try {
+    await usersCollection.updateOne(
+      { _id: new ObjectId(req.user.id) },
+      { $set: { dbConfig: { provider, uri, dbName } } }
+    );
+
+    res.json({ success: true, message: "Configuration saved." });
+  } catch (err) {
+    console.error("❌ POST /user/config Error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// -----------------------------------------------------
+// CHAT HISTORY ENDPOINTS
+// -----------------------------------------------------
+
+// GET /user/chat - Retrieve chat history
+app.get("/user/chat", authMiddleware, async (req, res) => {
+  try {
+    const user = await usersCollection.findOne({ _id: new ObjectId(req.user.id) });
+    if (!user) return res.status(404).json({ error: "User not found." });
+
+    res.json({
+      success: true,
+      history: user.chatHistory || []
+    });
+  } catch (err) {
+    console.error("❌ GET /user/chat Error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// DELETE /user/chat - Clear chat history
+app.delete("/user/chat", authMiddleware, async (req, res) => {
+  try {
+    await usersCollection.updateOne(
+      { _id: new ObjectId(req.user.id) },
+      { $set: { chatHistory: [] } }
+    );
+    res.json({ success: true, message: "Chat history cleared." });
+  } catch (err) {
+    console.error("❌ DELETE /user/chat Error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /user/token - Generate long-lived API Token
+app.post("/user/token", authMiddleware, async (req, res) => {
+  try {
+    // Generate a token that never expires (or expires in a very long time, e.g., 1 year)
+    const apiToken = generateJwt(
+      {
+        email: req.user.email,
+        id: req.user.id,
+        type: "api_token"
       },
-    },
-    "30d"
-  );
+      "365d"
+    );
 
-  res.json({ success: true, serviceToken });
+    res.json({ success: true, apiToken });
+  } catch (err) {
+    console.error("❌ POST /user/token Error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // -----------------------------------------------------
 // MONGO AGENT ENDPOINT
-// Requires: Authorization: Bearer <serviceToken>
+// Requires: Authorization: Bearer <AuthToken>
 // -----------------------------------------------------
-app.post("/mongo", async (req, res) => {
+app.post("/mongo", authMiddleware, async (req, res) => {
   try {
-    const header = req.headers.authorization;
-
-    if (!header)
-      return res.status(401).json({ error: "Missing Authorization header." });
-
-    const token = header.split(" ")[1];
-    const userData = jwt.verify(token, process.env.JWT_SECRET);
-
-    if (!userData.mongo)
-      return res.status(400).json({
-        error: "This is not a valid service token. Generate one via /auth/token.",
-      });
-
     const { prompt } = req.body;
     if (!prompt)
       return res.status(400).json({
         error: "Missing prompt. Provide { prompt: \"...\" }",
       });
 
+    // Fetch user config from DB
+    const user = await usersCollection.findOne({ _id: new ObjectId(req.user.id) });
+    if (!user || !user.dbConfig) {
+      return res.status(400).json({
+        error: "Database configuration not found. Please save credentials first.",
+      });
+    }
+
+    const { uri, dbName } = user.dbConfig;
+
     console.log("📩 Mongo Prompt:", prompt);
-    console.log("🔗 Using MongoDB:", userData.mongo.uri);
+    console.log("🔗 Using MongoDB:", uri);
+
+    // Save User Message to History
+    const userMsg = { role: "user", content: prompt, timestamp: Date.now() };
+    await usersCollection.updateOne(
+      { _id: new ObjectId(req.user.id) },
+      { $push: { chatHistory: userMsg } }
+    );
 
     // Simple MongoDB interaction example
     try {
-      const userClient = new MongoClient(userData.mongo.uri);
+      const userClient = new MongoClient(uri);
       await userClient.connect();
-      const db = userClient.db(userData.mongo.db);
-
-      // Example: List collections
-      const collections = await db.listCollections().toArray();
-      const collectionNames = collections.map(col => col.name);
-
-      // Simple response based on common queries
-      let response = `Connected to database: ${userData.mongo.db}\n`;
-      response += `Available collections: ${collectionNames.join(', ')}\n\n`;
-
-      console.log("📩 Mongo Prompt:", prompt);
+      const db = userClient.db(dbName);
 
       // Create a dynamic agent for this request using the user's database connection
       const mongoAgent = createMongoAgent(db);
       const result = await run(mongoAgent, prompt);
 
       await userClient.close();
+      console.log("Mongo Agent Result:", result.finalOutput);
+
+      // Try to parse JSON output
+      let finalContent = result.finalOutput;
+      try {
+        // Remove markdown code blocks if present (just in case)
+        const cleanOutput = result.finalOutput.replace(/```json\n?|\n?```/g, "").trim();
+        finalContent = JSON.parse(cleanOutput);
+      } catch (e) {
+        console.warn("Failed to parse agent output as JSON, using raw string.");
+      }
+
+      // Save Assistant Message to History
+      const assistantMsg = {
+        role: "assistant",
+        content: finalContent,
+        timestamp: Date.now()
+      };
+
+      await usersCollection.updateOne(
+        { _id: new ObjectId(req.user.id) },
+        { $push: { chatHistory: assistantMsg } }
+      );
 
       res.json({
         success: true,
         prompt,
-        finalOutput: result.finalOutput,
+        finalOutput: finalContent,
         toolCalls: result.toolCalls
       });
 
