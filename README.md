@@ -4,7 +4,7 @@
 
 Currently supports **MongoDB**, with plans for Firestore, MySQL, and PostgreSQL.
 
-![Database AI Agent Dashboard](https://placehold.co/1200x600/1a1a1a/ffffff?text=Database+AI+Agent+Dashboard)
+![Database AI Agent Dashboard](https://i.ibb.co/BVHBTQYd/Screenshot-from-2025-12-14-19-46-48.png)
 
 ## 🚀 Features
 
@@ -15,6 +15,9 @@ Currently supports **MongoDB**, with plans for Firestore, MySQL, and PostgreSQL.
 -   **Persistent Chat History**: Your conversation history is saved, allowing you to review past queries and results.
 -   **Structured JSON Responses**: The agent returns data in a structured JSON format, making it easy to parse and display.
 -   **Premium UI**: A modern, responsive dashboard built with React, Tailwind CSS, and Shadcn UI.
+
+![Connection](https://i.ibb.co/99K8GL0h/Screenshot-from-2025-12-14-19-45-40.png)
+![AI Chat](https://i.ibb.co/DPryd0Tc/Screenshot-from-2025-12-14-19-45-25.png)
 
 ## 🛠️ Tech Stack
 
