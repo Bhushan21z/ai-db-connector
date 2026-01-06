@@ -1,5 +1,5 @@
 import { Agent } from "@openai/agents";
-import { createMongoTools } from "./tools/mongo.js";
+import { createMongoTools } from "../tools/mongo.js";
 
 export const createMongoAgent = (database) => {
   return new Agent({
