@@ -14,39 +14,39 @@ function parseJSONField(field) {
 }
 
 export function createSupabaseTools(supabaseClient) {
-    const listTables = tool({
-        name: "list_tables",
-        description: "List all tables in the public schema of the database.",
-        parameters: z.object({}),
-        async execute() {
-            console.log("---------------------------------------------------");
-            console.log("Listing all tables");
-            try {
-                const { data, error } = await supabaseClient
-                    .from('information_schema.tables')
-                    .select('table_name')
-                    .eq('table_schema', 'public');
+    // const listTables = tool({
+    //     name: "list_tables",
+    //     description: "List all tables in the public schema of the database.",
+    //     parameters: z.object({}),
+    //     async execute() {
+    //         console.log("---------------------------------------------------");
+    //         console.log("Listing all tables");
+    //         try {
+    //             const { data, error } = await supabaseClient
+    //                 .from('information_schema.tables')
+    //                 .select('table_name')
+    //                 .eq('table_schema', 'public');
 
-                if (error) throw error;
+    //             if (error) throw error;
 
-                const names = data.map((t) => t.table_name);
-                return {
-                    status: "success",
-                    operation: "list_tables",
-                    data: names,
-                    message: `Found ${names.length} table(s): ${names.join(", ") || "none"}`,
-                };
-            } catch (err) {
-                console.error("❌ List tables error:", err);
-                return {
-                    status: "error",
-                    operation: "list_tables",
-                    data: null,
-                    message: `Failed to list tables: ${err.message}`,
-                };
-            }
-        },
-    });
+    //             const names = data.map((t) => t.table_name);
+    //             return {
+    //                 status: "success",
+    //                 operation: "list_tables",
+    //                 data: names,
+    //                 message: `Found ${names.length} table(s): ${names.join(", ") || "none"}`,
+    //             };
+    //         } catch (err) {
+    //             console.error("❌ List tables error:", err);
+    //             return {
+    //                 status: "error",
+    //                 operation: "list_tables",
+    //                 data: null,
+    //                 message: `Failed to list tables: ${err.message}`,
+    //             };
+    //         }
+    //     },
+    // });
 
     const selectRows = tool({
         name: "select_rows",
@@ -219,45 +219,45 @@ export function createSupabaseTools(supabaseClient) {
         },
     });
 
-    const executeSql = tool({
-        name: "execute_sql",
-        description: "Execute a raw PostgreSQL query on the database. Use this for complex queries, joins, or when other tools are insufficient. Always try to be safe and precise with your SQL.",
-        parameters: z.object({
-            sql: z.string().min(1).describe("The raw SQL query to execute."),
-        }),
-        async execute({ sql }) {
-            console.log("---------------------------------------------------");
-            console.log(`Executing SQL: ${sql}`);
-            try {
-                // We use a custom RPC 'exec_sql' which the user must add to their Supabase project
-                const { data, error } = await supabaseClient.rpc('exec_sql', { sql_query: sql });
+    // const executeSql = tool({
+    //     name: "execute_sql",
+    //     description: "Execute a raw PostgreSQL query on the database. Use this for complex queries, joins, or when other tools are insufficient. Always try to be safe and precise with your SQL.",
+    //     parameters: z.object({
+    //         sql: z.string().min(1).describe("The raw SQL query to execute."),
+    //     }),
+    //     async execute({ sql }) {
+    //         console.log("---------------------------------------------------");
+    //         console.log(`Executing SQL: ${sql}`);
+    //         try {
+    //             // We use a custom RPC 'exec_sql' which the user must add to their Supabase project
+    //             const { data, error } = await supabaseClient.rpc('exec_sql', { sql_query: sql });
 
-                if (error) throw error;
+    //             if (error) throw error;
 
-                return {
-                    status: "success",
-                    operation: "execute_sql",
-                    data,
-                    message: `Query executed successfully.`,
-                };
-            } catch (err) {
-                console.error("❌ SQL execution error:", err);
-                return {
-                    status: "error",
-                    operation: "execute_sql",
-                    data: null,
-                    message: `Failed to execute SQL: ${err.message}`,
-                };
-            }
-        },
-    });
+    //             return {
+    //                 status: "success",
+    //                 operation: "execute_sql",
+    //                 data,
+    //                 message: `Query executed successfully.`,
+    //             };
+    //         } catch (err) {
+    //             console.error("❌ SQL execution error:", err);
+    //             return {
+    //                 status: "error",
+    //                 operation: "execute_sql",
+    //                 data: null,
+    //                 message: `Failed to execute SQL: ${err.message}`,
+    //             };
+    //         }
+    //     },
+    // });
 
     return [
-        listTables,
+        // listTables,
         selectRows,
         insertRow,
         updateRow,
         deleteRow,
-        executeSql,
+        // executeSql,
     ];
 }
