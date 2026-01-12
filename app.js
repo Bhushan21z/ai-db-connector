@@ -25,7 +25,7 @@ const PORT = process.env.PORT || 5000;
 app.use("/auth", authRoutes);
 app.use("/user", userRoutes);
 app.use("/user/chat", chatRoutes);
-app.use("/mongo", agentRoutes);
+app.use("/agent", agentRoutes);
 
 // -----------------------------------------------------
 app.get("/", (req, res) => {

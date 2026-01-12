@@ -67,10 +67,21 @@ export const api = {
     },
 
     // --------------------------------------
-    // SEND MESSAGE (MONGO AGENT)
+    // SEND MESSAGE (AGENTS)
     // --------------------------------------
-    sendChatMessage: async (prompt: string) => {
-        const res = await fetch(`${BACKEND}/mongo`, {
+    sendMongoMessage: async (prompt: string) => {
+        const res = await fetch(`${BACKEND}/agent/mongo`, {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify({ prompt }),
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+        return data;
+    },
+
+    sendSupabaseMessage: async (prompt: string) => {
+        const res = await fetch(`${BACKEND}/agent/supabase`, {
             method: "POST",
             headers: getHeaders(),
             body: JSON.stringify({ prompt }),

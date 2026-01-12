@@ -159,7 +159,6 @@ export function createMongoTools(database) {
         .int()
         .positive()
         .max(1000)
-        .optional()
         .default(100)
         .describe("Maximum number of documents to return (default: 100, max: 1000)."),
     }),

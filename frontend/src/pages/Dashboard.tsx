@@ -37,10 +37,12 @@ interface ChatMessage {
 }
 
 const Dashboard = () => {
-  const [provider, setProvider] = useState("mongodb");
   const [mongoUri, setMongoUri] = useState("");
   const [dbName, setDbName] = useState("");
+  const [supabaseUrl, setSupabaseUrl] = useState("");
+  const [supabaseKey, setSupabaseKey] = useState("");
   const [showUri, setShowUri] = useState(false);
+  const [showSbKey, setShowSbKey] = useState(false);
   const [chatMessage, setChatMessage] = useState("");
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -48,6 +50,7 @@ const Dashboard = () => {
   const [apiToken, setApiToken] = useState("");
   const [isGeneratingToken, setIsGeneratingToken] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [activeAgent, setActiveAgent] = useState<"mongo" | "supabase">("mongo");
 
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -65,9 +68,10 @@ const Dashboard = () => {
       try {
         const config = await api.getDBConfig();
         if (config) {
-          setProvider(config.provider || "mongodb");
-          setMongoUri(config.uri || "");
-          setDbName(config.dbName || "");
+          setMongoUri(config.mongo?.uri || "");
+          setDbName(config.mongo?.dbName || "");
+          setSupabaseUrl(config.supabase?.url || "");
+          setSupabaseKey(config.supabase?.key || "");
         }
         const history = await api.getChatHistory();
         setChatHistory(history);
@@ -90,7 +94,10 @@ const Dashboard = () => {
   const handleSaveConfig = async () => {
     setIsSaving(true);
     try {
-      await api.saveDBConfig({ provider, uri: mongoUri, dbName });
+      await api.saveDBConfig({
+        mongo: { uri: mongoUri, dbName },
+        supabase: { url: supabaseUrl, key: supabaseKey }
+      });
       toast({ title: "Configuration Saved", description: "Your database credentials have been updated." });
     } catch (err) {
       toast({ title: "Error", description: "Failed to save configuration.", variant: "destructive" });
@@ -108,7 +115,10 @@ const Dashboard = () => {
     setIsLoading(true);
 
     try {
-      const res = await api.sendChatMessage(chatMessage);
+      const res = activeAgent === "mongo"
+        ? await api.sendMongoMessage(chatMessage)
+        : await api.sendSupabaseMessage(chatMessage);
+
       const assistantMsg: ChatMessage = {
         role: "assistant",
         content: res.finalOutput,
@@ -116,7 +126,7 @@ const Dashboard = () => {
       };
       setChatHistory(prev => [...prev, assistantMsg]);
     } catch (err) {
-      toast({ title: "Error", description: "Failed to get response from AI agent.", variant: "destructive" });
+      toast({ title: "Error", description: `Failed to get response from ${activeAgent} agent.`, variant: "destructive" });
     }
     setIsLoading(false);
   };
@@ -183,6 +193,28 @@ const Dashboard = () => {
               Database AI Agent
             </span>
           </div>
+
+          <div className={`flex p-1 rounded-xl ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-gray-100 border-gray-200'} border`}>
+            <button
+              onClick={() => setActiveAgent("mongo")}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${activeAgent === "mongo"
+                ? 'bg-indigo-500 text-white shadow-lg'
+                : 'text-gray-500 hover:text-indigo-500'
+                }`}
+            >
+              MongoDB
+            </button>
+            <button
+              onClick={() => setActiveAgent("supabase")}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${activeAgent === "supabase"
+                ? 'bg-indigo-500 text-white shadow-lg'
+                : 'text-gray-500 hover:text-indigo-500'
+                }`}
+            >
+              Supabase
+            </button>
+          </div>
+
           <div className="flex gap-3 items-center">
             <button
               onClick={toggleTheme}
@@ -332,50 +364,81 @@ const Dashboard = () => {
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Database Provider</Label>
-                    <select
-                      className={`w-full p-3 rounded-xl border ${isDark ? 'bg-gray-800/50 border-gray-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'} focus:ring-2 focus:ring-indigo-500 transition-all outline-none`}
-                      value={provider}
-                      onChange={(e) => setProvider(e.target.value)}
-                    >
-                      <option value="mongodb">MongoDB</option>
-                      <option value="postgres">Supabase (PostgreSQL)</option>
-                      <option value="firestore" disabled>Firestore (Coming soon)</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="uri">{provider === 'mongodb' ? 'Connection String (URI)' : 'Supabase URL'}</Label>
-                    <div className="relative">
+                <div className="space-y-6">
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-bold flex items-center gap-2">
+                      <Database className="h-5 w-5 text-green-500" />
+                      MongoDB (NoSQL)
+                    </h3>
+                    <div className="space-y-2">
+                      <Label htmlFor="uri">Connection String (URI)</Label>
+                      <div className="relative">
+                        <Input
+                          id="uri"
+                          type={showUri ? "text" : "password"}
+                          value={mongoUri}
+                          onChange={(e) => setMongoUri(e.target.value)}
+                          placeholder="mongodb+srv://..."
+                          className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'} pr-12 rounded-xl`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowUri(!showUri)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-indigo-500 transition-colors"
+                        >
+                          {showUri ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="dbName">Database Name</Label>
                       <Input
-                        id="uri"
-                        type={showUri ? "text" : "password"}
-                        value={mongoUri}
-                        onChange={(e) => setMongoUri(e.target.value)}
-                        placeholder={provider === 'mongodb' ? "mongodb+srv://..." : "https://your-project.supabase.co"}
-                        className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'} pr-12 rounded-xl`}
+                        id="dbName"
+                        value={dbName}
+                        onChange={(e) => setDbName(e.target.value)}
+                        placeholder="e.g., production_db"
+                        className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'} rounded-xl`}
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowUri(!showUri)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-indigo-500 transition-colors"
-                      >
-                        {showUri ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="dbName">{provider === 'mongodb' ? 'Database Name' : 'Supabase API Key'}</Label>
-                    <Input
-                      id="dbName"
-                      value={dbName}
-                      onChange={(e) => setDbName(e.target.value)}
-                      placeholder={provider === 'mongodb' ? "e.g., production_db" : "your-anon-key"}
-                      className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'} rounded-xl`}
-                    />
+                  <div className="h-px bg-gray-800 w-full" />
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-bold flex items-center gap-2">
+                      <Zap className="h-5 w-5 text-indigo-500" />
+                      Supabase (SQL)
+                    </h3>
+                    <div className="space-y-2">
+                      <Label htmlFor="sbUrl">Supabase URL</Label>
+                      <Input
+                        id="sbUrl"
+                        value={supabaseUrl}
+                        onChange={(e) => setSupabaseUrl(e.target.value)}
+                        placeholder="https://your-project.supabase.co"
+                        className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'} rounded-xl`}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="sbKey">Supabase API Key</Label>
+                      <div className="relative">
+                        <Input
+                          id="sbKey"
+                          type={showSbKey ? "text" : "password"}
+                          value={supabaseKey}
+                          onChange={(e) => setSupabaseKey(e.target.value)}
+                          placeholder="your-anon-key"
+                          className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'} pr-12 rounded-xl`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowSbKey(!showSbKey)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-indigo-500 transition-colors"
+                        >
+                          {showSbKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   <div className={`p-4 rounded-xl border ${isDark ? 'bg-indigo-500/5 border-indigo-500/20' : 'bg-indigo-50 border-indigo-100'} flex gap-3 items-start`}>
