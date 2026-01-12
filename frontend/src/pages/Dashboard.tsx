@@ -33,7 +33,7 @@ import { useTheme } from "@/context/ThemeContext";
 interface ChatMessage {
   role: "user" | "assistant";
   content: string | any;
-  timestamp?: string;
+  timestamp?: string | number;
 }
 
 const Dashboard = () => {
@@ -83,7 +83,7 @@ const Dashboard = () => {
   }, [chatHistory]);
 
   const handleLogout = () => {
-    storage.clearUser();
+    storage.removeUser();
     navigate("/login");
   };
 

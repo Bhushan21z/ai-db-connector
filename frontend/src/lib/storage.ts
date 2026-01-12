@@ -18,7 +18,7 @@ export interface DBConfig {
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string | any;
-  timestamp: number;
+  timestamp?: string | number;
 }
 
 // ---------------------------

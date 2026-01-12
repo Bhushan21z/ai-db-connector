@@ -2,19 +2,64 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Database, MessageSquare, Key, Zap, Shield, Code, Moon, Sun, Sparkles, ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
+import { storage } from "@/lib/storage";
 
 const Landing = () => {
   const [isDark, setIsDark] = useState(true);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
   useEffect(() => {
-    const handleMouseMove = (e) => {
+    const handleMouseMove = (e: any) => {
       setMousePosition({ x: e.clientX, y: e.clientY });
     };
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
+
+  const handleDemoLogin = async () => {
+    const demoEmail = import.meta.env.VITE_DEMO_EMAIL;
+    const demoPassword = import.meta.env.VITE_DEMO_PASSWORD;
+
+    if (!demoEmail || !demoPassword) {
+      toast({
+        title: "Demo Credentials Missing",
+        description: "Please set VITE_DEMO_EMAIL and VITE_DEMO_PASSWORD in your environment.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+      const res = await fetch(`${BACKEND}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: demoEmail, password: demoPassword }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast({ title: "Demo login failed", description: data.error, variant: "destructive" });
+        return;
+      }
+
+      storage.setUser({ email: demoEmail, id: data.id, token: data.token });
+      toast({ title: "Welcome to Demo!", description: "Logged in successfully with demo credentials." });
+      navigate("/dashboard");
+    } catch (err) {
+      toast({
+        title: "Network Error",
+        description: "Unable to reach server for demo login.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const features = [
     {
@@ -108,10 +153,10 @@ const Landing = () => {
             >
               {isDark ? <Sun className="h-5 w-5 text-yellow-400" /> : <Moon className="h-5 w-5 text-indigo-600" />}
             </button>
-            <Button variant="ghost" className="hover:scale-105 transition-transform">
+            <Button variant="ghost" className="hover:scale-105 transition-transform" onClick={() => navigate("/login")}>
               Login
             </Button>
-            <Button className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all hover:scale-105">
+            <Button className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all hover:scale-105" onClick={() => navigate("/signup")}>
               Sign Up
             </Button>
           </div>
@@ -153,8 +198,9 @@ const Landing = () => {
               size="lg"
               variant="outline"
               className={`text-lg px-8 ${isDark ? 'border-gray-700 hover:bg-gray-800' : 'border-gray-300 hover:bg-gray-100'} hover:scale-105 transition-all`}
+              onClick={handleDemoLogin}
             >
-              <Link to="/login">Try Demo</Link>
+              Try Demo
             </Button>
           </div>
 
@@ -233,7 +279,7 @@ const Landing = () => {
                   {feature.highlights.map((highlight, idx) => (
                     <div key={idx} className="flex items-center gap-2">
                       <div className={`w-1.5 h-1.5 rounded-full bg-gradient-to-r ${feature.gradient}`} />
-                      <span className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                      <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                         {highlight}
                       </span>
                     </div>
