@@ -5,7 +5,8 @@ import { authMiddleware } from "../middleware/auth.js";
 import { createMongoAgent } from "../../agents/agent.js";
 import { createSupabaseAgent } from "../../agents/supabase_agent.js";
 import { run } from "@openai/agents";
-import { createClient } from "@supabase/supabase-js";
+import pkg from 'pg';
+const { Client } = pkg;
 
 const router = express.Router();
 
@@ -62,18 +63,27 @@ router.post("/supabase", authMiddleware, async (req, res) => {
             .eq('user_id', req.user.id)
             .single();
 
-        if (configError || !config || !config.supabase_url) {
-            return res.status(400).json({ error: "Supabase configuration not found." });
+        if (configError || !config || !config.supabase_url || !config.supabase_key) {
+            return res.status(400).json({ error: "Supabase configuration (URL or Password) not found." });
         }
 
-        const { supabase_url: sbUrl, supabase_key: sbKey, id: databaseId } = config;
+        const { supabase_url: sbUrl, supabase_key: sbPassword, id: databaseId } = config;
+
+        // Construct connection string: postgresql://postgres:[PASSWORD]@db.[PROJECT_REF].supabase.co:5432/postgres
+        // sbUrl is usually https://[PROJECT_REF].supabase.co
+        const projectRef = sbUrl.replace('https://', '').replace('.supabase.co', '');
+        const pgUri = `postgresql://postgres:${sbPassword}@db.${projectRef}.supabase.co:5432/postgres`;
 
         const chatHistoryId = await getOrCreateHistory(req.user.id, databaseId);
         await saveMessage(chatHistoryId, 'user', prompt);
 
-        const userSbClient = createClient(sbUrl, sbKey);
-        const sbAgent = createSupabaseAgent(userSbClient);
+        const pgClient = new Client({ connectionString: pgUri });
+        await pgClient.connect();
+
+        const sbAgent = createSupabaseAgent(pgClient);
         const result = await run(sbAgent, prompt);
+
+        await pgClient.end();
 
         const finalContent = parseResult(result.finalOutput);
         await saveMessage(chatHistoryId, 'assistant', JSON.stringify(finalContent));

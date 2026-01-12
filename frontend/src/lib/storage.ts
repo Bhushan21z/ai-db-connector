@@ -16,7 +16,7 @@ export interface DBConfig {
   };
   supabase?: {
     url: string;
-    key: string;
+    password: string;
   };
 }
 

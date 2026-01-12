@@ -1,7 +1,7 @@
 import { Agent } from "@openai/agents";
-import { createSupabaseTools } from "../tools/supabase.js";
+import { createPostgresTools } from "../tools/supabase.js";
 
-export const createSupabaseAgent = (supabaseClient) => {
+export const createSupabaseAgent = (pgClient) => {
     return new Agent({
         name: "Supabase Agent",
         instructions: `
@@ -33,6 +33,6 @@ You must ALWAYS return a valid JSON object. Do not include markdown formatting.
 }
     `,
         model: "gpt-4o-mini",
-        tools: createSupabaseTools(supabaseClient),
+        tools: createPostgresTools(pgClient),
     });
 };

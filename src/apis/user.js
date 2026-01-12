@@ -27,7 +27,7 @@ router.get("/config", authMiddleware, async (req, res) => {
                 },
                 supabase: {
                     url: config.supabase_url,
-                    key: config.supabase_key
+                    password: config.supabase_key
                 }
             } : null
         });
@@ -52,8 +52,8 @@ router.post("/config", authMiddleware, async (req, res) => {
             api_key: mongo?.uri,
             db_name: mongo?.dbName,
             supabase_url: sbConfig?.url,
-            supabase_key: sbConfig?.key,
-            provider: 'multi' // or keep as is
+            supabase_key: sbConfig?.password,
+            provider: 'multi'
         };
 
         if (existing) {

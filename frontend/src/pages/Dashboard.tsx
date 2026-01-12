@@ -40,9 +40,9 @@ const Dashboard = () => {
   const [mongoUri, setMongoUri] = useState("");
   const [dbName, setDbName] = useState("");
   const [supabaseUrl, setSupabaseUrl] = useState("");
-  const [supabaseKey, setSupabaseKey] = useState("");
+  const [supabasePassword, setSupabasePassword] = useState("");
   const [showUri, setShowUri] = useState(false);
-  const [showSbKey, setShowSbKey] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [chatMessage, setChatMessage] = useState("");
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -71,7 +71,7 @@ const Dashboard = () => {
           setMongoUri(config.mongo?.uri || "");
           setDbName(config.mongo?.dbName || "");
           setSupabaseUrl(config.supabase?.url || "");
-          setSupabaseKey(config.supabase?.key || "");
+          setSupabasePassword(config.supabase?.password || "");
         }
         const history = await api.getChatHistory();
         setChatHistory(history);
@@ -96,7 +96,7 @@ const Dashboard = () => {
     try {
       await api.saveDBConfig({
         mongo: { uri: mongoUri, dbName },
-        supabase: { url: supabaseUrl, key: supabaseKey }
+        supabase: { url: supabaseUrl, password: supabasePassword }
       });
       toast({ title: "Configuration Saved", description: "Your database credentials have been updated." });
     } catch (err) {
@@ -420,22 +420,22 @@ const Dashboard = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="sbKey">Supabase API Key</Label>
+                      <Label htmlFor="sbPassword">Database Password</Label>
                       <div className="relative">
                         <Input
-                          id="sbKey"
-                          type={showSbKey ? "text" : "password"}
-                          value={supabaseKey}
-                          onChange={(e) => setSupabaseKey(e.target.value)}
-                          placeholder="your-anon-key"
+                          id="sbPassword"
+                          type={showPassword ? "text" : "password"}
+                          value={supabasePassword}
+                          onChange={(e) => setSupabasePassword(e.target.value)}
+                          placeholder="Your database password"
                           className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'} pr-12 rounded-xl`}
                         />
                         <button
                           type="button"
-                          onClick={() => setShowSbKey(!showSbKey)}
+                          onClick={() => setShowPassword(!showPassword)}
                           className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-indigo-500 transition-colors"
                         >
-                          {showSbKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                       </div>
                     </div>

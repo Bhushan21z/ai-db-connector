@@ -13,44 +13,43 @@ function parseJSONField(field) {
     return field;
 }
 
-export function createSupabaseTools(supabaseClient) {
-    // const listTables = tool({
-    //     name: "list_tables",
-    //     description: "List all tables in the public schema of the database.",
-    //     parameters: z.object({}),
-    //     async execute() {
-    //         console.log("---------------------------------------------------");
-    //         console.log("Listing all tables");
-    //         try {
-    //             const { data, error } = await supabaseClient
-    //                 .from('information_schema.tables')
-    //                 .select('table_name')
-    //                 .eq('table_schema', 'public');
+export function createPostgresTools(pgClient) {
+    const listTables = tool({
+        name: "list_tables",
+        description: "List all tables in the public schema of the database.",
+        parameters: z.object({}),
+        async execute() {
+            console.log("---------------------------------------------------");
+            console.log("Listing all tables");
+            try {
+                const res = await pgClient.query(`
+                    SELECT table_name 
+                    FROM information_schema.tables 
+                    WHERE table_schema = 'public'
+                `);
 
-    //             if (error) throw error;
-
-    //             const names = data.map((t) => t.table_name);
-    //             return {
-    //                 status: "success",
-    //                 operation: "list_tables",
-    //                 data: names,
-    //                 message: `Found ${names.length} table(s): ${names.join(", ") || "none"}`,
-    //             };
-    //         } catch (err) {
-    //             console.error("❌ List tables error:", err);
-    //             return {
-    //                 status: "error",
-    //                 operation: "list_tables",
-    //                 data: null,
-    //                 message: `Failed to list tables: ${err.message}`,
-    //             };
-    //         }
-    //     },
-    // });
+                const names = res.rows.map((t) => t.table_name);
+                return {
+                    status: "success",
+                    operation: "list_tables",
+                    data: names,
+                    message: `Found ${names.length} table(s): ${names.join(", ") || "none"}`,
+                };
+            } catch (err) {
+                console.error("❌ List tables error:", err);
+                return {
+                    status: "error",
+                    operation: "list_tables",
+                    data: null,
+                    message: `Failed to list tables: ${err.message}`,
+                };
+            }
+        },
+    });
 
     const selectRows = tool({
         name: "select_rows",
-        description: "Select rows from a table with optional filters. Pass filters as a JSON object.",
+        description: "Select rows from a table with optional filters. Pass filters as a JSON string.",
         parameters: z.object({
             table: z.string().min(1).describe("The name of the table."),
             filters: z.string().describe("Filters as a JSON string. Example: '{\"id\": 1, \"status\": \"active\"}'"),
@@ -61,24 +60,27 @@ export function createSupabaseTools(supabaseClient) {
             console.log("---------------------------------------------------");
             console.log(`Selecting rows from table: ${table} with filters:`, parsedFilters);
             try {
-                let query = supabaseClient.from(table).select("*").limit(limit);
+                let sql = `SELECT * FROM ${table}`;
+                const values = [];
 
-                if (parsedFilters) {
-                    for (const [key, value] of Object.entries(parsedFilters)) {
-                        query = query.eq(key, value);
-                    }
+                if (parsedFilters && Object.keys(parsedFilters).length > 0) {
+                    const conditions = Object.entries(parsedFilters).map(([key, val], i) => {
+                        values.push(val);
+                        return `${key} = $${i + 1}`;
+                    });
+                    sql += ` WHERE ${conditions.join(" AND ")}`;
                 }
 
-                const { data, error } = await query;
-                if (error) throw error;
+                sql += ` LIMIT ${limit}`;
 
+                const res = await pgClient.query(sql, values);
                 return {
                     status: "success",
                     operation: "select",
                     table,
-                    data,
-                    count: data.length,
-                    message: `Found ${data.length} row(s).`,
+                    data: res.rows,
+                    count: res.rows.length,
+                    message: `Found ${res.rows.length} row(s).`,
                 };
             } catch (err) {
                 console.error("❌ Select error:", err);
@@ -95,7 +97,7 @@ export function createSupabaseTools(supabaseClient) {
 
     const insertRow = tool({
         name: "insert_row",
-        description: "Insert a row into a table. Pass the row data as a JSON object.",
+        description: "Insert a row into a table. Pass the row data as a JSON string.",
         parameters: z.object({
             table: z.string().min(1).describe("The name of the table."),
             data: z.string().describe("The row data to insert as a JSON string. Example: '{\"name\": \"John\", \"age\": 30}'"),
@@ -105,19 +107,18 @@ export function createSupabaseTools(supabaseClient) {
             console.log("---------------------------------------------------");
             console.log(`Inserting row into table: ${table}`);
             try {
-                const { data: result, error } = await supabaseClient
-                    .from(table)
-                    .insert([parsedData])
-                    .select()
-                    .single();
+                const keys = Object.keys(parsedData);
+                const values = Object.values(parsedData);
+                const placeholders = keys.map((_, i) => `$${i + 1}`).join(", ");
+                const sql = `INSERT INTO ${table} (${keys.join(", ")}) VALUES (${placeholders}) RETURNING *`;
 
-                if (error) throw error;
+                const res = await pgClient.query(sql, values);
 
                 return {
                     status: "success",
                     operation: "insert",
                     table,
-                    data: result,
+                    data: res.rows[0],
                     message: `Row inserted successfully.`,
                 };
             } catch (err) {
@@ -135,7 +136,7 @@ export function createSupabaseTools(supabaseClient) {
 
     const updateRow = tool({
         name: "update_row",
-        description: "Update rows in a table matching a filter. Pass filter and data as JSON objects.",
+        description: "Update rows in a table matching a filter. Pass filter and data as JSON strings.",
         parameters: z.object({
             table: z.string().min(1).describe("The name of the table."),
             filter: z.string().describe("Filter to match rows as a JSON string. Example: '{\"id\": 1}'"),
@@ -147,22 +148,28 @@ export function createSupabaseTools(supabaseClient) {
             console.log("---------------------------------------------------");
             console.log(`Updating rows in table: ${table}`);
             try {
-                let query = supabaseClient.from(table).update(parsedData);
+                const setKeys = Object.keys(parsedData);
+                const setValues = Object.values(parsedData);
+                const filterKeys = Object.keys(parsedFilter);
+                const filterValues = Object.values(parsedFilter);
 
-                for (const [key, value] of Object.entries(parsedFilter)) {
-                    query = query.eq(key, value);
-                }
+                let sql = `UPDATE ${table} SET `;
+                sql += setKeys.map((key, i) => `${key} = $${i + 1}`).join(", ");
 
-                const { data: result, error } = await query.select();
-                if (error) throw error;
+                sql += " WHERE ";
+                sql += filterKeys.map((key, i) => `${key} = $${setKeys.length + i + 1}`).join(" AND ");
+
+                sql += " RETURNING *";
+
+                const res = await pgClient.query(sql, [...setValues, ...filterValues]);
 
                 return {
                     status: "success",
                     operation: "update",
                     table,
-                    data: result,
-                    affected: result.length,
-                    message: `Updated ${result.length} row(s).`,
+                    data: res.rows,
+                    affected: res.rows.length,
+                    message: `Updated ${res.rows.length} row(s).`,
                 };
             } catch (err) {
                 console.error("❌ Update error:", err);
@@ -179,7 +186,7 @@ export function createSupabaseTools(supabaseClient) {
 
     const deleteRow = tool({
         name: "delete_row",
-        description: "Delete rows from a table matching a filter. Pass filter as a JSON object.",
+        description: "Delete rows from a table matching a filter. Pass filter as a JSON string.",
         parameters: z.object({
             table: z.string().min(1).describe("The name of the table."),
             filter: z.string().describe("Filter to match rows for deletion as a JSON string. Example: '{\"id\": 1}'"),
@@ -189,22 +196,22 @@ export function createSupabaseTools(supabaseClient) {
             console.log("---------------------------------------------------");
             console.log(`Deleting rows from table: ${table}`);
             try {
-                let query = supabaseClient.from(table).delete();
+                const keys = Object.keys(parsedFilter);
+                const values = Object.values(parsedFilter);
 
-                for (const [key, value] of Object.entries(parsedFilter)) {
-                    query = query.eq(key, value);
-                }
+                let sql = `DELETE FROM ${table} WHERE `;
+                sql += keys.map((key, i) => `${key} = $${i + 1}`).join(" AND ");
+                sql += " RETURNING *";
 
-                const { data: result, error } = await query.select();
-                if (error) throw error;
+                const res = await pgClient.query(sql, values);
 
                 return {
                     status: "success",
                     operation: "delete",
                     table,
-                    data: result,
-                    affected: result.length,
-                    message: `Deleted ${result.length} row(s).`,
+                    data: res.rows,
+                    affected: res.rows.length,
+                    message: `Deleted ${res.rows.length} row(s).`,
                 };
             } catch (err) {
                 console.error("❌ Delete error:", err);
@@ -219,45 +226,42 @@ export function createSupabaseTools(supabaseClient) {
         },
     });
 
-    // const executeSql = tool({
-    //     name: "execute_sql",
-    //     description: "Execute a raw PostgreSQL query on the database. Use this for complex queries, joins, or when other tools are insufficient. Always try to be safe and precise with your SQL.",
-    //     parameters: z.object({
-    //         sql: z.string().min(1).describe("The raw SQL query to execute."),
-    //     }),
-    //     async execute({ sql }) {
-    //         console.log("---------------------------------------------------");
-    //         console.log(`Executing SQL: ${sql}`);
-    //         try {
-    //             // We use a custom RPC 'exec_sql' which the user must add to their Supabase project
-    //             const { data, error } = await supabaseClient.rpc('exec_sql', { sql_query: sql });
+    const executeSql = tool({
+        name: "execute_sql",
+        description: "Execute a raw PostgreSQL query on the database. Use this for complex queries, joins, or when other tools are insufficient. Always try to be safe and precise with your SQL.",
+        parameters: z.object({
+            sql: z.string().min(1).describe("The raw SQL query to execute."),
+        }),
+        async execute({ sql }) {
+            console.log("---------------------------------------------------");
+            console.log(`Executing SQL: ${sql}`);
+            try {
+                const res = await pgClient.query(sql);
 
-    //             if (error) throw error;
-
-    //             return {
-    //                 status: "success",
-    //                 operation: "execute_sql",
-    //                 data,
-    //                 message: `Query executed successfully.`,
-    //             };
-    //         } catch (err) {
-    //             console.error("❌ SQL execution error:", err);
-    //             return {
-    //                 status: "error",
-    //                 operation: "execute_sql",
-    //                 data: null,
-    //                 message: `Failed to execute SQL: ${err.message}`,
-    //             };
-    //         }
-    //     },
-    // });
+                return {
+                    status: "success",
+                    operation: "execute_sql",
+                    data: res.rows,
+                    message: `Query executed successfully.`,
+                };
+            } catch (err) {
+                console.error("❌ SQL execution error:", err);
+                return {
+                    status: "error",
+                    operation: "execute_sql",
+                    data: null,
+                    message: `Failed to execute SQL: ${err.message}`,
+                };
+            }
+        },
+    });
 
     return [
-        // listTables,
+        listTables,
         selectRows,
         insertRow,
         updateRow,
         deleteRow,
-        // executeSql,
+        executeSql,
     ];
 }
