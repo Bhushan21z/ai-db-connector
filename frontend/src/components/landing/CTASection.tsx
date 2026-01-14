@@ -12,7 +12,7 @@ export const CTASection = ({ isDark }: CTASectionProps) => {
             <Card className={`p-12 md:p-16 text-center ${isDark ? 'bg-gradient-to-br from-indigo-900/30 via-purple-900/30 to-pink-900/30 border-indigo-500/20' : 'bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 border-indigo-200'} backdrop-blur-sm relative overflow-hidden group`}>
                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 <div className="relative z-10">
-                    <h2 className="text-4xl md:text-5xl font-bold mb-6">
+                    <h2 className={`text-4xl md:text-5xl font-black mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                         Ready to transform your
                         <br />
                         <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">

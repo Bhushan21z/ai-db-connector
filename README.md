@@ -1,10 +1,10 @@
-# Querio - Intelligent Backend Database as a Service
+# Querio - AI Backend Database as a Service
 
 **Querio** is a powerful Backend Database as a Service (DBaaS) platform that transforms your existing databases into intelligent, AI-powered API layers. Connect your database and start using natural language to query, manage, and integrate data into your services instantly.
 
 Currently supports **MongoDB** and **Supabase (PostgreSQL)**.
 
-![Querio Dashboard](https://i.ibb.co/BVHBTQYd/Screenshot-from-2025-12-14-19-46-48.png)
+![Querio Dashboard](./screenshots/Screenshot%20from%202026-01-14%2022-12-05.png)
 
 ## 🚀 Features
 
@@ -15,8 +15,9 @@ Currently supports **MongoDB** and **Supabase (PostgreSQL)**.
 -   **Secure & Encrypted**: Enterprise-grade security with encrypted credentials and isolated environments.
 -   **Premium UI**: A modern, responsive dashboard built with React, Tailwind CSS, and Shadcn UI.
 
-![Connection](https://i.ibb.co/99K8GL0h/Screenshot-from-2025-12-14-19-45-40.png)
-![AI Chat](https://i.ibb.co/DPryd0Tc/Screenshot-from-2025-12-14-19-45-25.png)
+![Connection](./screenshots/database.png)
+![AI Chat](./screenshots/chat.png)
+![API Access](./screenshots/api.png)
 
 ## 🛠️ Tech Stack
 

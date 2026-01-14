@@ -39,7 +39,7 @@ export const FeatureCard = ({ feature, index, isDark }: FeatureCardProps) => {
                     </div>
                 </div>
 
-                <h3 className="text-2xl font-bold mb-3 group-hover:bg-gradient-to-r group-hover:from-indigo-500 group-hover:to-purple-500 group-hover:bg-clip-text group-hover:text-transparent transition-all duration-300">
+                <h3 className={`${isDark ? 'text-white' : 'text-black'} text-2xl font-bold mb-3 group-hover:bg-gradient-to-r group-hover:from-indigo-500 group-hover:to-purple-500 group-hover:bg-clip-text group-hover:text-transparent transition-all duration-300`}>
                     {feature.title}
                 </h3>
 

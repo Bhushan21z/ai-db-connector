@@ -41,7 +41,7 @@ export const HeroSection = ({ isDark, handleDemoLogin }: HeroSectionProps) => {
                     <Button
                         size="lg"
                         variant="outline"
-                        className={`text-lg px-8 ${isDark ? 'border-gray-700 hover:bg-gray-800' : 'border-gray-300 hover:bg-gray-100'} hover:scale-105 transition-all`}
+                        className={`text-lg px-8 ${isDark ? 'border-gray-700 text-white hover:bg-gray-800' : 'border-gray-400 text-white hover:bg-gray-100'} hover:scale-105 transition-all font-medium`}
                         onClick={handleDemoLogin}
                     >
                         Try Demo

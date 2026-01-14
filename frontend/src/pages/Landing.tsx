@@ -89,10 +89,10 @@ const Landing = () => {
 
       <section className="container mx-auto px-4 py-20 relative">
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold mb-4">
+          <h2 className="text-4xl md:text-6xl font-black mb-4 tracking-tight">
             <span className={isDark ? 'text-white' : 'text-gray-900'}>Powerful Features</span>
           </h2>
-          <p className={`text-xl ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+          <p className={`text-xl ${isDark ? 'text-gray-400' : 'text-gray-600'} font-medium`}>
             Everything you need to manage databases with AI
           </p>
         </div>

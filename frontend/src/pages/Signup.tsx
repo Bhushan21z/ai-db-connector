@@ -84,7 +84,7 @@ const Signup = () => {
         toggleTheme={() => setIsDark(!isDark)}
         platformName="Querio"
       />
-      <div className={`min-h-screen transition-colors duration-500 flex m-2 items-center justify-center p-4 ${isDark ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
+      <div className={`min-h-screen transition-colors duration-500 flex items-center justify-center p-4 ${isDark ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
         {/* Animated background gradient */}
         <div className="fixed inset-0 overflow-hidden pointer-events-none">
           <div
