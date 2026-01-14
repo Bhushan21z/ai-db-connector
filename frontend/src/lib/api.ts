@@ -23,7 +23,6 @@ export const api = {
             if (!data.success) throw new Error(data.error);
             return data.config;
         } catch (error) {
-            console.error("Failed to fetch DB config:", error);
             return null;
         }
     },
@@ -42,22 +41,23 @@ export const api = {
     // --------------------------------------
     // CHAT HISTORY
     // --------------------------------------
-    getChatHistory: async (): Promise<ChatMessage[]> => {
+    getChatHistory: async (provider?: string): Promise<ChatMessage[]> => {
         try {
-            const res = await fetch(`${BACKEND}/user/chat`, {
+            const url = provider ? `${BACKEND}/user/chat?provider=${provider}` : `${BACKEND}/user/chat`;
+            const res = await fetch(url, {
                 headers: getHeaders(),
             });
             const data = await res.json();
             if (!data.success) throw new Error(data.error);
             return data.history;
         } catch (error) {
-            console.error("Failed to fetch chat history:", error);
             return [];
         }
     },
 
-    clearChatHistory: async () => {
-        const res = await fetch(`${BACKEND}/user/chat`, {
+    clearChatHistory: async (provider?: string) => {
+        const url = provider ? `${BACKEND}/user/chat?provider=${provider}` : `${BACKEND}/user/chat`;
+        const res = await fetch(url, {
             method: "DELETE",
             headers: getHeaders(),
         });
@@ -67,10 +67,21 @@ export const api = {
     },
 
     // --------------------------------------
-    // SEND MESSAGE (MONGO AGENT)
+    // SEND MESSAGE (AGENTS)
     // --------------------------------------
-    sendChatMessage: async (prompt: string) => {
-        const res = await fetch(`${BACKEND}/mongo`, {
+    sendMongoMessage: async (prompt: string) => {
+        const res = await fetch(`${BACKEND}/agent/mongo`, {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify({ prompt }),
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+        return data;
+    },
+
+    sendSupabaseMessage: async (prompt: string) => {
+        const res = await fetch(`${BACKEND}/agent/supabase`, {
             method: "POST",
             headers: getHeaders(),
             body: JSON.stringify({ prompt }),

@@ -10,15 +10,20 @@ export interface User {
 }
 
 export interface DBConfig {
-  provider: string; // mongodb, firestore, mysql (future)
-  uri: string;
-  dbName: string;
+  mongo?: {
+    uri: string;
+    dbName: string;
+  };
+  supabase?: {
+    url: string;
+    password: string;
+  };
 }
 
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string | any;
-  timestamp: number;
+  timestamp?: string | number;
 }
 
 // ---------------------------

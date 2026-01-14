@@ -1,23 +1,23 @@
-# Database AI Agent
+# Querio - AI Backend Database as a Service
 
-**Database AI Agent** is a powerful, secure, and user-friendly application that allows you to interact with your databases using natural language. Powered by OpenAI's advanced language models, it translates your plain English queries into precise database operations.
+**Querio** is a powerful Backend Database as a Service (DBaaS) platform that transforms your existing databases into intelligent, AI-powered API layers. Connect your database and start using natural language to query, manage, and integrate data into your services instantly.
 
-Currently supports **MongoDB**, with plans for Firestore, MySQL, and PostgreSQL.
+Currently supports **MongoDB** and **Supabase (PostgreSQL)**.
 
-![Database AI Agent Dashboard](https://i.ibb.co/BVHBTQYd/Screenshot-from-2025-12-14-19-46-48.png)
+![Querio Dashboard](./screenshots/Screenshot%20from%202026-01-14%2022-12-05.png)
 
 ## 🚀 Features
 
--   **Natural Language Queries**: Ask questions like "Find all users who signed up last week" or "Count orders by status" and get instant results.
--   **Full CRUD Support**: Perform Create, Read, Update, and Delete operations seamlessly.
--   **Secure Credentials**: Your database connection strings are encrypted (AES-256) and stored securely in our backend. We never log raw credentials.
--   **API Access**: Generate long-lived Bearer tokens to integrate the AI agent into your own applications or workflows via a simple REST API.
--   **Persistent Chat History**: Your conversation history is saved, allowing you to review past queries and results.
--   **Structured JSON Responses**: The agent returns data in a structured JSON format, making it easy to parse and display.
+-   **AI-Powered API Generation**: Instantly turn your database into a RESTful API that understands natural language.
+-   **Natural Language Queries**: Query your data using plain English—no SQL or NoSQL knowledge required.
+-   **Multi-Database Support**: Seamlessly connect and manage PostgreSQL (Supabase) and MongoDB.
+-   **Developer-First SDKs**: Easy integration into your existing services with simple API tokens.
+-   **Secure & Encrypted**: Enterprise-grade security with encrypted credentials and isolated environments.
 -   **Premium UI**: A modern, responsive dashboard built with React, Tailwind CSS, and Shadcn UI.
 
-![Connection](https://i.ibb.co/99K8GL0h/Screenshot-from-2025-12-14-19-45-40.png)
-![AI Chat](https://i.ibb.co/DPryd0Tc/Screenshot-from-2025-12-14-19-45-25.png)
+![Connection](./screenshots/database.png)
+![AI Chat](./screenshots/chat.png)
+![API Access](./screenshots/api.png)
 
 ## 🛠️ Tech Stack
 
@@ -114,7 +114,7 @@ cd ai-db-connector
 #### API Example (cURL)
 
 ```bash
-curl -X POST http://localhost:5000/mongo \
+curl -X POST http://localhost:5000/agent/mongo \
   -H "Authorization: Bearer <YOUR_API_TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{"prompt": "Count the number of documents in the users collection"}'

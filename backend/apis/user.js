@@ -21,9 +21,14 @@ router.get("/config", authMiddleware, async (req, res) => {
         res.json({
             success: true,
             config: config ? {
-                provider: config.provider,
-                uri: config.api_key,
-                dbName: config.db_name
+                mongo: {
+                    uri: config.api_key,
+                    dbName: config.db_name
+                },
+                supabase: {
+                    url: config.supabase_url,
+                    password: config.supabase_key
+                }
             } : null
         });
     } catch (err) {
@@ -34,11 +39,7 @@ router.get("/config", authMiddleware, async (req, res) => {
 
 // POST /user/config - Save DB credentials
 router.post("/config", authMiddleware, async (req, res) => {
-    const { provider, uri, dbName } = req.body;
-
-    if (!provider || !uri || !dbName) {
-        return res.status(400).json({ error: "Missing required fields." });
-    }
+    const { mongo, supabase: sbConfig } = req.body;
 
     try {
         const { data: existing } = await supabase
@@ -47,16 +48,24 @@ router.post("/config", authMiddleware, async (req, res) => {
             .eq('user_id', req.user.id)
             .single();
 
+        const updateData = {
+            api_key: mongo?.uri,
+            db_name: mongo?.dbName,
+            supabase_url: sbConfig?.url,
+            supabase_key: sbConfig?.password,
+            provider: 'multi'
+        };
+
         if (existing) {
             const { error } = await supabase
                 .from('database')
-                .update({ provider, api_key: uri, db_name: dbName })
+                .update(updateData)
                 .eq('id', existing.id);
             if (error) throw error;
         } else {
             const { error } = await supabase
                 .from('database')
-                .insert([{ user_id: req.user.id, provider, api_key: uri, db_name: dbName }]);
+                .insert([{ user_id: req.user.id, ...updateData }]);
             if (error) throw error;
         }
 
@@ -78,6 +87,14 @@ router.post("/token", authMiddleware, async (req, res) => {
             },
             "365d"
         );
+
+        // Save to database table
+        const { error } = await supabase
+            .from('database')
+            .update({ api_token: apiToken })
+            .eq('user_id', req.user.id);
+
+        if (error) throw error;
 
         res.json({ success: true, apiToken });
     } catch (err) {
