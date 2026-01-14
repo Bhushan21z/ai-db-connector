@@ -4,10 +4,10 @@ import cors from "cors";
 import "dotenv/config";
 
 // Routes
-import authRoutes from "./src/apis/auth.js";
-import userRoutes from "./src/apis/user.js";
-import chatRoutes from "./src/apis/chat.js";
-import agentRoutes from "./src/apis/agent.js";
+import authRoutes from "./backend/apis/auth.js";
+import userRoutes from "./backend/apis/user.js";
+import chatRoutes from "./backend/apis/chat.js";
+import agentRoutes from "./backend/apis/agent.js";
 
 // ----------------------------
 // Express App Setup

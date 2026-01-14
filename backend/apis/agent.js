@@ -2,7 +2,7 @@ import express from "express";
 import { MongoClient } from "mongodb";
 import { supabase } from "../lib/supabase.js";
 import { authMiddleware } from "../middleware/auth.js";
-import { createMongoAgent } from "../../agents/agent.js";
+import { createMongoAgent } from "../../agents/mongo_agent.js";
 import { createSupabaseAgent } from "../../agents/supabase_agent.js";
 import { run } from "@openai/agents";
 import pkg from 'pg';
