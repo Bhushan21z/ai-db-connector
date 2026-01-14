@@ -4,7 +4,7 @@
 
 Currently supports **MongoDB** and **Supabase (PostgreSQL)**.
 
-![Querio Dashboard](./screenshots/Screenshot%20from%202026-01-14%2022-12-05.png)
+![Querio Dashboard](./screenshots/hero.png)
 
 ## 🚀 Features
 
