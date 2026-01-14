@@ -114,7 +114,7 @@ cd ai-db-connector
 #### API Example (cURL)
 
 ```bash
-curl -X POST http://localhost:5000/mongo \
+curl -X POST http://localhost:5000/agent/mongo \
   -H "Authorization: Bearer <YOUR_API_TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{"prompt": "Count the number of documents in the users collection"}'

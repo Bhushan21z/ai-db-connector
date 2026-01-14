@@ -88,6 +88,14 @@ router.post("/token", authMiddleware, async (req, res) => {
             "365d"
         );
 
+        // Save to database table
+        const { error } = await supabase
+            .from('database')
+            .update({ api_token: apiToken })
+            .eq('user_id', req.user.id);
+
+        if (error) throw error;
+
         res.json({ success: true, apiToken });
     } catch (err) {
         console.error("❌ POST /user/token Error:", err);

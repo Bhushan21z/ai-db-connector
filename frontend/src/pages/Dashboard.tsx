@@ -145,7 +145,7 @@ const Dashboard = () => {
     setIsGeneratingToken(true);
     try {
       const res = await api.generateApiToken();
-      setApiToken(res.token);
+      setApiToken(res);
       toast({ title: "Token Generated", description: "Your new API token is ready." });
     } catch (err) {
       toast({ title: "Error", description: "Failed to generate API token.", variant: "destructive" });
@@ -519,7 +519,7 @@ const Dashboard = () => {
                       Usage Example
                     </h4>
                     <pre className={`p-4 rounded-xl text-xs font-mono overflow-x-auto ${isDark ? 'bg-black/60 border-gray-800' : 'bg-gray-900 text-gray-100'} border`}>
-                      {`curl -X POST http://localhost:5000/mongo \\
+                      {`curl -X POST http://localhost:5000/agent/mongo \\
   -H "Authorization: Bearer YOUR_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{"prompt": "List all collections"}'`}
