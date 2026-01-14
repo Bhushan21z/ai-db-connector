@@ -7,10 +7,17 @@ const router = express.Router();
 // GET /user/chat - Retrieve chat history
 router.get("/", authMiddleware, async (req, res) => {
     try {
-        const { data: histories, error: historyError } = await supabase
+        const { provider } = req.query;
+        const query = supabase
             .from('chat_history')
             .select('id')
             .eq('user_id', req.user.id);
+
+        if (provider) {
+            query.eq('provider', provider);
+        }
+
+        const { data: histories, error: historyError } = await query;
 
         if (historyError) throw historyError;
 
@@ -56,10 +63,17 @@ router.get("/", authMiddleware, async (req, res) => {
 // DELETE /user/chat - Clear chat history
 router.delete("/", authMiddleware, async (req, res) => {
     try {
-        const { data: histories } = await supabase
+        const { provider } = req.query;
+        const query = supabase
             .from('chat_history')
             .select('id')
             .eq('user_id', req.user.id);
+
+        if (provider) {
+            query.eq('provider', provider);
+        }
+
+        const { data: histories } = await query;
 
         if (histories && histories.length > 0) {
             const ids = histories.map(h => h.id);

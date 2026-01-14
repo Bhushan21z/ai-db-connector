@@ -41,9 +41,10 @@ export const api = {
     // --------------------------------------
     // CHAT HISTORY
     // --------------------------------------
-    getChatHistory: async (): Promise<ChatMessage[]> => {
+    getChatHistory: async (provider?: string): Promise<ChatMessage[]> => {
         try {
-            const res = await fetch(`${BACKEND}/user/chat`, {
+            const url = provider ? `${BACKEND}/user/chat?provider=${provider}` : `${BACKEND}/user/chat`;
+            const res = await fetch(url, {
                 headers: getHeaders(),
             });
             const data = await res.json();
@@ -54,8 +55,9 @@ export const api = {
         }
     },
 
-    clearChatHistory: async () => {
-        const res = await fetch(`${BACKEND}/user/chat`, {
+    clearChatHistory: async (provider?: string) => {
+        const url = provider ? `${BACKEND}/user/chat?provider=${provider}` : `${BACKEND}/user/chat`;
+        const res = await fetch(url, {
             method: "DELETE",
             headers: getHeaders(),
         });

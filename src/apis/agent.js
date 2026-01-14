@@ -29,7 +29,7 @@ router.post("/mongo", authMiddleware, async (req, res) => {
         const { api_key: uri, db_name: dbName, id: databaseId } = config;
 
         // Chat history logic (reused)
-        const chatHistoryId = await getOrCreateHistory(req.user.id, databaseId);
+        const chatHistoryId = await getOrCreateHistory(req.user.id, databaseId, 'mongo');
         await saveMessage(chatHistoryId, 'user', prompt);
 
         const userClient = new MongoClient(uri);
@@ -74,7 +74,7 @@ router.post("/supabase", authMiddleware, async (req, res) => {
         const projectRef = sbUrl.replace('https://', '').replace('.supabase.co', '');
         const pgUri = `postgresql://postgres:${sbPassword}@db.${projectRef}.supabase.co:5432/postgres`;
 
-        const chatHistoryId = await getOrCreateHistory(req.user.id, databaseId);
+        const chatHistoryId = await getOrCreateHistory(req.user.id, databaseId, 'supabase');
         await saveMessage(chatHistoryId, 'user', prompt);
 
         const pgClient = new Client({ connectionString: pgUri });
@@ -96,19 +96,20 @@ router.post("/supabase", authMiddleware, async (req, res) => {
 });
 
 // Helper functions
-async function getOrCreateHistory(userId, databaseId) {
+async function getOrCreateHistory(userId, databaseId, provider) {
     const { data: existing } = await supabase
         .from('chat_history')
         .select('id')
         .eq('user_id', userId)
         .eq('database_id', databaseId)
+        .eq('provider', provider)
         .single();
 
     if (existing) return existing.id;
 
     const { data: newHistory, error } = await supabase
         .from('chat_history')
-        .insert([{ user_id: userId, database_id: databaseId }])
+        .insert([{ user_id: userId, database_id: databaseId, provider }])
         .select()
         .single();
 

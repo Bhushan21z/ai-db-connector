@@ -32,7 +32,7 @@ export const ChatTab = ({
     chatEndRef
 }: ChatTabProps) => {
     return (
-        <div className="grid lg:grid-cols-4 gap-6 h-[calc(100vh-250px)]">
+        <div className="grid lg:grid-cols-5 gap-6 h-[calc(100vh-250px)]">
             <Card className={`hidden lg:flex flex-col p-4 ${isDark ? 'bg-gray-900/50 border-gray-800' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-2xl border overflow-hidden`}>
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="font-bold flex items-center gap-2">
@@ -56,18 +56,33 @@ export const ChatTab = ({
                 </div>
             </Card>
 
-            <Card className={`lg:col-span-3 flex flex-col ${isDark ? 'bg-gray-900/50 border-gray-800' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-2xl border overflow-hidden relative`}>
+            <Card className={`lg:col-span-4 flex flex-col ${isDark ? 'bg-gray-900/50 border-gray-800' : 'bg-white border-gray-200'} backdrop-blur-xl rounded-3xl border overflow-hidden relative shadow-2xl`}>
                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-purple-500/5 to-pink-500/5 pointer-events-none" />
 
-                <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar relative z-10">
+                <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar relative z-10">
                     {chatHistory.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-70">
-                            <div className="p-4 rounded-full bg-indigo-500/10">
-                                <Sparkles className="h-10 w-10 text-indigo-500" />
+                        <div className="h-full flex flex-col items-center justify-center text-center space-y-6 animate-fade-in">
+                            <div className="p-6 rounded-3xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 shadow-inner">
+                                <Sparkles className="h-16 w-16 text-indigo-500 animate-pulse" />
                             </div>
-                            <div>
-                                <h3 className="text-xl font-bold">How can I help with your data?</h3>
-                                <p className="text-sm">Try: "List all tables" or "Find users older than 20"</p>
+                            <div className="max-w-md space-y-2">
+                                <h3 className="text-3xl font-black bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">
+                                    AI Database Assistant
+                                </h3>
+                                <p className={`text-lg ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                                    Ask anything about your data. I can query, update, and analyze your database in real-time.
+                                </p>
+                                <div className="flex flex-wrap justify-center gap-2 mt-6">
+                                    {["List all tables", "Find recent users", "Count orders by city"].map((hint) => (
+                                        <button
+                                            key={hint}
+                                            onClick={() => setChatMessage(hint)}
+                                            className={`px-4 py-2 rounded-full text-xs font-medium border transition-all ${isDark ? 'bg-gray-800/50 border-gray-700 hover:border-indigo-500/50' : 'bg-gray-50 border-gray-200 hover:border-indigo-500/50'}`}
+                                        >
+                                            {hint}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     ) : (

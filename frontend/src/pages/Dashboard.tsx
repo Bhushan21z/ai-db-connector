@@ -4,7 +4,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   MessageSquare,
   Key,
-  Settings
+  Settings,
+  Database,
+  Zap
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { storage } from "@/lib/storage";
@@ -37,6 +39,8 @@ const Dashboard = () => {
   const [copied, setCopied] = useState(false);
   const [activeAgent, setActiveAgent] = useState<"mongo" | "supabase">("mongo");
 
+  const [hasSelectedProvider, setHasSelectedProvider] = useState(false);
+
   const { toast } = useToast();
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useTheme();
@@ -58,14 +62,16 @@ const Dashboard = () => {
           setSupabaseUrl(config.supabase?.url || "");
           setSupabasePassword(config.supabase?.password || "");
         }
-        const history = await api.getChatHistory();
-        setChatHistory(history);
+        if (hasSelectedProvider) {
+          const history = await api.getChatHistory(activeAgent);
+          setChatHistory(history);
+        }
       } catch (err) {
         // Silent fail or handle via UI if needed
       }
     };
     loadData();
-  }, [navigate]);
+  }, [navigate, hasSelectedProvider, activeAgent]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -118,7 +124,7 @@ const Dashboard = () => {
 
   const handleClearChat = async () => {
     try {
-      await api.clearChatHistory();
+      await api.clearChatHistory(activeAgent);
       setChatHistory([]);
       toast({ title: "Chat Cleared", description: "Conversation history has been deleted." });
     } catch (err) {
@@ -144,6 +150,75 @@ const Dashboard = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const selectProvider = (provider: "mongo" | "supabase") => {
+    setActiveAgent(provider);
+    setHasSelectedProvider(true);
+  };
+
+  if (!hasSelectedProvider) {
+    return (
+      <div className={`min-h-screen flex flex-col transition-colors duration-500 ${isDark ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
+        <Header
+          isDark={isDark}
+          toggleTheme={toggleTheme}
+          platformName="Querio"
+          isDashboard={true}
+          handleLogout={handleLogout}
+        />
+        <main className="flex-1 flex items-center justify-center p-4">
+          <div className="max-w-4xl w-full space-y-8 animate-fade-in">
+            <div className="text-center space-y-4">
+              <h1 className="text-4xl font-black bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+                Choose Your Database
+              </h1>
+              <p className={`text-lg ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                Select a provider to start managing your data with AI
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-8">
+              <button
+                onClick={() => selectProvider("mongo")}
+                className={`group relative p-8 rounded-3xl border-2 transition-all duration-500 hover:scale-[1.02] ${isDark ? 'bg-gray-900/50 border-gray-800 hover:border-green-500/50' : 'bg-white border-gray-200 hover:border-green-500/50'} overflow-hidden`}
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="relative z-10 flex flex-col items-center text-center space-y-4">
+                  <div className="p-4 rounded-2xl bg-green-500/10 text-green-500 group-hover:scale-110 transition-transform">
+                    <Database className="h-12 w-12" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold">MongoDB</h3>
+                    <p className={`text-sm mt-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                      Flexible NoSQL database for modern applications
+                    </p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => selectProvider("supabase")}
+                className={`group relative p-8 rounded-3xl border-2 transition-all duration-500 hover:scale-[1.02] ${isDark ? 'bg-gray-900/50 border-gray-800 hover:border-indigo-500/50' : 'bg-white border-gray-200 hover:border-indigo-500/50'} overflow-hidden`}
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="relative z-10 flex flex-col items-center text-center space-y-4">
+                  <div className="p-4 rounded-2xl bg-indigo-500/10 text-indigo-500 group-hover:scale-110 transition-transform">
+                    <Zap className="h-12 w-12" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold">Supabase</h3>
+                    <p className={`text-sm mt-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                      Powerful SQL database with real-time capabilities
+                    </p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className={`min-h-screen transition-colors duration-500 ${isDark ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
       <Header
@@ -156,31 +231,30 @@ const Dashboard = () => {
         handleLogout={handleLogout}
       />
 
-      <main className="container mx-auto px-4 py-8 max-w-6xl">
+      <main className="container mx-auto px-4 py-8 max-w-7xl">
         <Tabs defaultValue="chat" className="space-y-8">
-          <div className="flex justify-center">
-            {setActiveAgent && (
-              <div className={`flex p-1 mr-10 rounded-xl ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-gray-100 border-gray-200'} border`}>
-                <button
-                  onClick={() => setActiveAgent("mongo")}
-                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${activeAgent === "mongo"
-                    ? 'bg-indigo-500 text-white shadow-lg'
-                    : 'text-gray-500 hover:text-indigo-500'
-                    }`}
-                >
-                  MongoDB
-                </button>
-                <button
-                  onClick={() => setActiveAgent("supabase")}
-                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${activeAgent === "supabase"
-                    ? 'bg-indigo-500 text-white shadow-lg'
-                    : 'text-gray-500 hover:text-indigo-500'
-                    }`}
-                >
-                  Supabase
-                </button>
-              </div>
-            )}
+          <div className="flex justify-center items-center gap-4">
+            <div className={`flex p-1 rounded-xl ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-gray-100 border-gray-200'} border`}>
+              <button
+                onClick={() => setActiveAgent("mongo")}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${activeAgent === "mongo"
+                  ? 'bg-indigo-500 text-white shadow-lg'
+                  : 'text-gray-500 hover:text-indigo-500'
+                  }`}
+              >
+                MongoDB
+              </button>
+              <button
+                onClick={() => setActiveAgent("supabase")}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${activeAgent === "supabase"
+                  ? 'bg-indigo-500 text-white shadow-lg'
+                  : 'text-gray-500 hover:text-indigo-500'
+                  }`}
+              >
+                Supabase
+              </button>
+            </div>
+
             <TabsList className={`p-1 ${isDark ? 'bg-gray-900/50 border-gray-800' : 'bg-gray-200/50 border-gray-200'} border backdrop-blur-sm rounded-xl`}>
               <TabsTrigger value="chat" className="rounded-lg data-[state=active]:bg-indigo-500 data-[state=active]:text-white transition-all px-6">
                 <MessageSquare className="h-4 w-4 mr-2" />
@@ -213,6 +287,7 @@ const Dashboard = () => {
           <TabsContent value="credentials" className="animate-fade-in">
             <CredentialsTab
               isDark={isDark}
+              activeAgent={activeAgent}
               mongoUri={mongoUri}
               setMongoUri={setMongoUri}
               dbName={dbName}
@@ -233,6 +308,7 @@ const Dashboard = () => {
           <TabsContent value="api" className="animate-fade-in">
             <ApiAccessTab
               isDark={isDark}
+              activeAgent={activeAgent}
               apiToken={apiToken}
               isGeneratingToken={isGeneratingToken}
               handleGenerateToken={handleGenerateToken}

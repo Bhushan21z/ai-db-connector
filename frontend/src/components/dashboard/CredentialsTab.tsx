@@ -6,6 +6,7 @@ import { ShieldCheck, Database, Zap, Eye, EyeOff, RefreshCw, Check } from "lucid
 
 interface CredentialsTabProps {
     isDark: boolean;
+    activeAgent: "mongo" | "supabase";
     mongoUri: string;
     setMongoUri: (uri: string) => void;
     dbName: string;
@@ -24,6 +25,7 @@ interface CredentialsTabProps {
 
 export const CredentialsTab = ({
     isDark,
+    activeAgent,
     mongoUri,
     setMongoUri,
     dbName,
@@ -43,97 +45,97 @@ export const CredentialsTab = ({
         <Card className={`max-w-2xl mx-auto p-8 ${isDark ? 'bg-gray-900/50 border-gray-800' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-2xl border shadow-xl relative overflow-hidden group`}>
             <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-purple-500/5 to-pink-500/5 pointer-events-none" />
 
-            <div className="relative z-10 space-y-6">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="p-3 rounded-xl bg-indigo-500/10">
-                        <ShieldCheck className="h-6 w-6 text-indigo-500" />
+            <div className="relative z-10 space-y-8">
+                <div className="flex items-center gap-4 mb-8">
+                    <div className={`p-4 rounded-2xl ${activeAgent === 'mongo' ? 'bg-green-500/10' : 'bg-indigo-500/10'}`}>
+                        {activeAgent === 'mongo' ? (
+                            <Database className="h-8 w-8 text-green-500" />
+                        ) : (
+                            <Zap className="h-8 w-8 text-indigo-500" />
+                        )}
                     </div>
                     <div>
-                        <h2 className="text-2xl font-bold">Database Credentials</h2>
-                        <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Securely connect your database to the AI agent</p>
+                        <h2 className="text-3xl font-black">
+                            {activeAgent === 'mongo' ? 'MongoDB' : 'Supabase'} Credentials
+                        </h2>
+                        <p className={`text-base ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                            Configure your {activeAgent === 'mongo' ? 'NoSQL' : 'SQL'} database connection
+                        </p>
                     </div>
                 </div>
 
-                <div className="space-y-6">
-                    <div className="space-y-4">
-                        <h3 className="text-lg font-bold flex items-center gap-2">
-                            <Database className="h-5 w-5 text-green-500" />
-                            MongoDB (NoSQL)
-                        </h3>
-                        <div className="space-y-2">
-                            <Label htmlFor="uri">Connection String (URI)</Label>
-                            <div className="relative">
+                <div className="space-y-8">
+                    {activeAgent === 'mongo' ? (
+                        <div className="space-y-6 animate-fade-in">
+                            <div className="space-y-3">
+                                <Label htmlFor="uri" className="text-sm font-bold uppercase tracking-wider opacity-70">Connection String (URI)</Label>
+                                <div className="relative">
+                                    <Input
+                                        id="uri"
+                                        type={showUri ? "text" : "password"}
+                                        value={mongoUri}
+                                        onChange={(e) => setMongoUri(e.target.value)}
+                                        placeholder="mongodb+srv://..."
+                                        className={`h-14 px-6 ${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'} pr-14 rounded-2xl shadow-inner text-base`}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowUri(!showUri)}
+                                        className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-indigo-500 transition-colors"
+                                    >
+                                        {showUri ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="space-y-3">
+                                <Label htmlFor="dbName" className="text-sm font-bold uppercase tracking-wider opacity-70">Database Name</Label>
                                 <Input
-                                    id="uri"
-                                    type={showUri ? "text" : "password"}
-                                    value={mongoUri}
-                                    onChange={(e) => setMongoUri(e.target.value)}
-                                    placeholder="mongodb+srv://..."
-                                    className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'} pr-12 rounded-xl`}
+                                    id="dbName"
+                                    value={dbName}
+                                    onChange={(e) => setDbName(e.target.value)}
+                                    placeholder="e.g., production_db"
+                                    className={`h-14 px-6 ${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'} rounded-2xl shadow-inner text-base`}
                                 />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowUri(!showUri)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-indigo-500 transition-colors"
-                                >
-                                    {showUri ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                </button>
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="dbName">Database Name</Label>
-                            <Input
-                                id="dbName"
-                                value={dbName}
-                                onChange={(e) => setDbName(e.target.value)}
-                                placeholder="e.g., production_db"
-                                className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'} rounded-xl`}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="h-px bg-gray-800 w-full" />
-
-                    <div className="space-y-4">
-                        <h3 className="text-lg font-bold flex items-center gap-2">
-                            <Zap className="h-5 w-5 text-indigo-500" />
-                            Supabase (SQL)
-                        </h3>
-                        <div className="space-y-2">
-                            <Label htmlFor="sbUrl">Supabase URL</Label>
-                            <Input
-                                id="sbUrl"
-                                value={supabaseUrl}
-                                onChange={(e) => setSupabaseUrl(e.target.value)}
-                                placeholder="https://your-project.supabase.co"
-                                className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'} rounded-xl`}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="sbPassword">Database Password</Label>
-                            <div className="relative">
+                    ) : (
+                        <div className="space-y-6 animate-fade-in">
+                            <div className="space-y-3">
+                                <Label htmlFor="sbUrl" className="text-sm font-bold uppercase tracking-wider opacity-70">Supabase URL</Label>
                                 <Input
-                                    id="sbPassword"
-                                    type={showPassword ? "text" : "password"}
-                                    value={supabasePassword}
-                                    onChange={(e) => setSupabasePassword(e.target.value)}
-                                    placeholder="Your database password"
-                                    className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'} pr-12 rounded-xl`}
+                                    id="sbUrl"
+                                    value={supabaseUrl}
+                                    onChange={(e) => setSupabaseUrl(e.target.value)}
+                                    placeholder="https://your-project.supabase.co"
+                                    className={`h-14 px-6 ${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'} rounded-2xl shadow-inner text-base`}
                                 />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-indigo-500 transition-colors"
-                                >
-                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                </button>
+                            </div>
+                            <div className="space-y-3">
+                                <Label htmlFor="sbPassword" className="text-sm font-bold uppercase tracking-wider opacity-70">Database Password</Label>
+                                <div className="relative">
+                                    <Input
+                                        id="sbPassword"
+                                        type={showPassword ? "text" : "password"}
+                                        value={supabasePassword}
+                                        onChange={(e) => setSupabasePassword(e.target.value)}
+                                        placeholder="Your database password"
+                                        className={`h-14 px-6 ${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'} pr-14 rounded-2xl shadow-inner text-base`}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-indigo-500 transition-colors"
+                                    >
+                                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
 
-                    <div className={`p-4 rounded-xl border ${isDark ? 'bg-indigo-500/5 border-indigo-500/20' : 'bg-indigo-50 border-indigo-100'} flex gap-3 items-start`}>
-                        <ShieldCheck className="h-5 w-5 text-indigo-500 mt-0.5" />
-                        <p className="text-xs text-indigo-500/80 leading-relaxed">
+                    <div className={`p-6 rounded-2xl border ${isDark ? 'bg-indigo-500/5 border-indigo-500/20' : 'bg-indigo-50 border-indigo-100'} flex gap-4 items-start shadow-inner`}>
+                        <ShieldCheck className="h-6 w-6 text-indigo-500 mt-0.5" />
+                        <p className="text-sm text-indigo-500/80 leading-relaxed font-medium">
                             Your credentials are encrypted at rest and never shared. We only use them to execute the queries you request through the AI agent.
                         </p>
                     </div>
@@ -141,10 +143,10 @@ export const CredentialsTab = ({
                     <Button
                         onClick={handleSaveConfig}
                         disabled={isSaving}
-                        className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg shadow-indigo-500/20 transition-all hover:scale-[1.02] py-6 rounded-xl font-bold"
+                        className="w-full h-16 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-xl shadow-indigo-500/30 transition-all hover:scale-[1.01] active:scale-[0.99] rounded-2xl font-black text-lg"
                     >
-                        {isSaving ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
-                        {isSaving ? "Saving..." : "Save Configuration"}
+                        {isSaving ? <RefreshCw className="h-5 w-5 mr-3 animate-spin" /> : <Check className="h-5 w-5 mr-3" />}
+                        {isSaving ? "Saving Configuration..." : "Save Configuration"}
                     </Button>
                 </div>
             </div>
