@@ -23,7 +23,6 @@ export const api = {
             if (!data.success) throw new Error(data.error);
             return data.config;
         } catch (error) {
-            console.error("Failed to fetch DB config:", error);
             return null;
         }
     },
@@ -51,7 +50,6 @@ export const api = {
             if (!data.success) throw new Error(data.error);
             return data.history;
         } catch (error) {
-            console.error("Failed to fetch chat history:", error);
             return [];
         }
     },
