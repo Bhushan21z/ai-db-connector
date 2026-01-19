@@ -32,4 +32,8 @@ app.get("/", (req, res) => {
   res.send("Database AI Agent Server is Running 🚀");
 });
 
-app.listen(PORT, () => console.log(`🔥 Server running on port ${PORT}`));
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => console.log(`🔥 Server running on port ${PORT}`));
+}
+
+export default app;
