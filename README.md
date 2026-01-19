@@ -6,6 +6,8 @@ Currently supports **MongoDB** and **Supabase (PostgreSQL)**.
 
 ![Querio Dashboard](./screenshots/hero.png)
 
+![Querio Archiecture](./screenshots/architecture.png)
+
 ## 🚀 Features
 
 -   **AI-Powered API Generation**: Instantly turn your database into a RESTful API that understands natural language.
