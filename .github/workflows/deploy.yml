@@ -39,6 +39,6 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd ${{ secrets.EC2_APP_PATH }}
-            git pull origin main
+            git pull origin master
             sudo docker-compose down
             sudo docker-compose up --build -d

@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: backend
-    expose:
+    ports:
       - "5000"
     env_file:
       - .env
@@ -17,11 +17,11 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: frontend
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     ports:
       - "80:80"
       - "443:443"
-    volumes:
-      - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - backend
     restart: always
