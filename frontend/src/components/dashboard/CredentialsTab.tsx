@@ -42,7 +42,7 @@ export const CredentialsTab = ({
     isSaving
 }: CredentialsTabProps) => {
     return (
-        <Card className={`max-w-2xl mx-auto p-8 ${isDark ? 'bg-gray-900/50 border-gray-800' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-2xl border shadow-xl relative overflow-hidden group`}>
+        <Card className={`max-w-2xl mx-auto p-4 md:p-8 ${isDark ? 'bg-gray-900/50 border-gray-800' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-2xl border shadow-xl relative overflow-hidden group`}>
             <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-purple-500/5 to-pink-500/5 pointer-events-none" />
 
             <div className="relative z-10 space-y-8">
@@ -55,7 +55,7 @@ export const CredentialsTab = ({
                         )}
                     </div>
                     <div>
-                        <h2 className="text-3xl font-black">
+                        <h2 className="text-2xl md:text-3xl font-black">
                             {activeAgent === 'mongo' ? 'MongoDB' : 'Supabase'} Credentials
                         </h2>
                         <p className={`text-base ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -143,7 +143,7 @@ export const CredentialsTab = ({
                     <Button
                         onClick={handleSaveConfig}
                         disabled={isSaving}
-                        className="w-full h-16 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-xl shadow-indigo-500/30 transition-all hover:scale-[1.01] active:scale-[0.99] rounded-2xl font-black text-lg"
+                        className="w-full h-14 md:h-16 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-xl shadow-indigo-500/30 transition-all hover:scale-[1.01] active:scale-[0.99] rounded-2xl font-black text-lg"
                     >
                         {isSaving ? <RefreshCw className="h-5 w-5 mr-3 animate-spin" /> : <Check className="h-5 w-5 mr-3" />}
                         {isSaving ? "Saving Configuration..." : "Save Configuration"}

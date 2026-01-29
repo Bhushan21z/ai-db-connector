@@ -176,7 +176,7 @@ const Dashboard = () => {
               </p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
               <button
                 onClick={() => selectProvider("mongo")}
                 className={`group relative p-8 rounded-3xl border-2 transition-all duration-500 hover:scale-[1.02] ${isDark ? 'bg-gray-900/50 border-gray-800 hover:border-green-500/50' : 'bg-white border-gray-200 hover:border-green-500/50'} overflow-hidden`}
@@ -232,8 +232,8 @@ const Dashboard = () => {
       />
 
       <main className="container mx-auto px-4 py-8 max-w-7xl">
-        <Tabs defaultValue="chat" className="space-y-8">
-          <div className="flex justify-center items-center gap-4">
+        <Tabs defaultValue="chat" className="space-y-4 md:space-y-8">
+          <div className="flex flex-col md:flex-row justify-center items-center gap-4">
             <div className={`flex p-1 rounded-xl ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-gray-100 border-gray-200'} border`}>
               <button
                 onClick={() => setActiveAgent("mongo")}
@@ -256,17 +256,17 @@ const Dashboard = () => {
             </div>
 
             <TabsList className={`p-1 ${isDark ? 'bg-gray-900/50 border-gray-800' : 'bg-gray-200/50 border-gray-200'} border backdrop-blur-sm rounded-xl`}>
-              <TabsTrigger value="chat" className="rounded-lg data-[state=active]:bg-indigo-500 data-[state=active]:text-white transition-all px-6">
-                <MessageSquare className="h-4 w-4 mr-2" />
-                AI Chat
+              <TabsTrigger value="chat" className="rounded-lg data-[state=active]:bg-indigo-500 data-[state=active]:text-white transition-all px-3 md:px-6">
+                <MessageSquare className="h-4 w-4 md:mr-2" />
+                <span className="hidden md:inline">AI Chat</span>
               </TabsTrigger>
-              <TabsTrigger value="credentials" className="rounded-lg data-[state=active]:bg-indigo-500 data-[state=active]:text-white transition-all px-6">
-                <Key className="h-4 w-4 mr-2" />
-                Credentials
+              <TabsTrigger value="credentials" className="rounded-lg data-[state=active]:bg-indigo-500 data-[state=active]:text-white transition-all px-3 md:px-6">
+                <Key className="h-4 w-4 md:mr-2" />
+                <span className="hidden md:inline">Credentials</span>
               </TabsTrigger>
-              <TabsTrigger value="api" className="rounded-lg data-[state=active]:bg-indigo-500 data-[state=active]:text-white transition-all px-6">
-                <Settings className="h-4 w-4 mr-2" />
-                API Access
+              <TabsTrigger value="api" className="rounded-lg data-[state=active]:bg-indigo-500 data-[state=active]:text-white transition-all px-3 md:px-6">
+                <Settings className="h-4 w-4 md:mr-2" />
+                <span className="hidden md:inline">API Access</span>
               </TabsTrigger>
             </TabsList>
           </div>

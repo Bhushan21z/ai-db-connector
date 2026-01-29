@@ -32,7 +32,7 @@ export const ChatTab = ({
     chatEndRef
 }: ChatTabProps) => {
     return (
-        <div className="grid lg:grid-cols-5 gap-6 h-[calc(100vh-250px)]">
+        <div className="grid lg:grid-cols-5 gap-6 h-[calc(100vh-200px)] md:h-[calc(100vh-250px)]">
             <Card className={`hidden lg:flex flex-col p-4 ${isDark ? 'bg-gray-900/50 border-gray-800' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-2xl border overflow-hidden`}>
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="font-bold flex items-center gap-2">
@@ -59,7 +59,7 @@ export const ChatTab = ({
             <Card className={`lg:col-span-4 flex flex-col ${isDark ? 'bg-gray-900/50 border-gray-800' : 'bg-white border-gray-200'} backdrop-blur-xl rounded-3xl border overflow-hidden relative shadow-2xl`}>
                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-purple-500/5 to-pink-500/5 pointer-events-none" />
 
-                <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar relative z-10">
+                <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-4 md:space-y-8 custom-scrollbar relative z-10">
                     {chatHistory.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-center space-y-6 animate-fade-in">
                             <div className="p-6 rounded-3xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 shadow-inner">
@@ -88,7 +88,7 @@ export const ChatTab = ({
                     ) : (
                         chatHistory.map((msg, i) => (
                             <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}>
-                                <div className={`max-w-[85%] p-4 rounded-2xl shadow-sm ${msg.role === 'user'
+                                <div className={`max-w-[90%] md:max-w-[85%] p-3 md:p-4 rounded-2xl shadow-sm ${msg.role === 'user'
                                     ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-tr-none'
                                     : `${isDark ? 'bg-gray-800 border-gray-700' : 'bg-gray-100 border-gray-200'} border rounded-tl-none`
                                     }`}>
@@ -130,13 +130,13 @@ export const ChatTab = ({
                         <Button
                             type="submit"
                             disabled={isLoading || !chatMessage.trim()}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-6 shadow-lg shadow-indigo-500/20 transition-all hover:scale-105"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-4 md:px-6 shadow-lg shadow-indigo-500/20 transition-all hover:scale-105"
                         >
                             <Send className="h-4 w-4" />
                         </Button>
                     </form>
                 </div>
-            </Card>
-        </div>
+            </Card >
+        </div >
     );
 };
