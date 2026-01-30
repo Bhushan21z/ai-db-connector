@@ -69,15 +69,24 @@ router.post("/supabase", authMiddleware, async (req, res) => {
 
         const { supabase_url: sbUrl, supabase_key: sbPassword, id: databaseId } = config;
 
-        // Construct connection string: postgresql://postgres:[PASSWORD]@db.[PROJECT_REF].supabase.co:5432/postgres
-        // sbUrl is usually https://[PROJECT_REF].supabase.co
-        const projectRef = sbUrl.replace('https://', '').replace('.supabase.co', '');
-        const pgUri = `postgresql://postgres:${sbPassword}@db.${projectRef}.supabase.co:5432/postgres`;
+        // Extract project reference and host
+        const projectRef = sbUrl.replace('https://', '').replace('.supabase.co', '').split('/')[0];
+        const host = `db.${projectRef}.supabase.co`;
 
         const chatHistoryId = await getOrCreateHistory(req.user.id, databaseId, 'supabase');
         await saveMessage(chatHistoryId, 'user', prompt);
 
-        const pgClient = new Client({ connectionString: pgUri });
+        // Use object-based configuration for better reliability with special characters
+        const pgClient = new Client({
+            host: host,
+            port: 5432,
+            database: 'postgres',
+            user: 'postgres',
+            password: sbPassword,
+            ssl: {
+                rejectUnauthorized: false
+            }
+        });
         await pgClient.connect();
 
         const sbAgent = createSupabaseAgent(pgClient);
