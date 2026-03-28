@@ -1,6 +1,6 @@
 import express from "express";
 import { MongoClient } from "mongodb";
-import { supabase } from "../lib/supabase.js";
+import { query } from "../lib/db.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { createMongoAgent } from "../../agents/mongo_agent.js";
 import { createSupabaseAgent } from "../../agents/supabase_agent.js";
@@ -16,13 +16,14 @@ router.post("/mongo", authMiddleware, async (req, res) => {
         const { prompt } = req.body;
         if (!prompt) return res.status(400).json({ error: "Missing prompt." });
 
-        const { data: config, error: configError } = await supabase
-            .from('database')
-            .select('*')
-            .eq('user_id', req.user.id)
-            .single();
+        const { rows } = await query(
+            'SELECT * FROM "database" WHERE user_id = $1',
+            [req.user.id]
+        );
 
-        if (configError || !config || !config.api_key) {
+        const config = rows[0];
+
+        if (!config || !config.api_key) {
             return res.status(400).json({ error: "MongoDB configuration not found." });
         }
 
@@ -57,13 +58,14 @@ router.post("/supabase", authMiddleware, async (req, res) => {
         const { prompt } = req.body;
         if (!prompt) return res.status(400).json({ error: "Missing prompt." });
 
-        const { data: config, error: configError } = await supabase
-            .from('database')
-            .select('*')
-            .eq('user_id', req.user.id)
-            .single();
+        const { rows } = await query(
+            'SELECT * FROM "database" WHERE user_id = $1',
+            [req.user.id]
+        );
 
-        if (configError || !config || !config.supabase_url || !config.supabase_key) {
+        const config = rows[0];
+
+        if (!config || !config.supabase_url || !config.supabase_key) {
             return res.status(400).json({ error: "Supabase configuration (URL or Password) not found." });
         }
 
@@ -106,30 +108,26 @@ router.post("/supabase", authMiddleware, async (req, res) => {
 
 // Helper functions
 async function getOrCreateHistory(userId, databaseId, provider) {
-    const { data: existing } = await supabase
-        .from('chat_history')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('database_id', databaseId)
-        .eq('provider', provider)
-        .single();
+    const { rows: existingRows } = await query(
+        'SELECT id FROM chat_history WHERE user_id = $1 AND database_id = $2 AND provider = $3',
+        [userId, databaseId, provider]
+    );
 
-    if (existing) return existing.id;
+    if (existingRows.length > 0) return existingRows[0].id;
 
-    const { data: newHistory, error } = await supabase
-        .from('chat_history')
-        .insert([{ user_id: userId, database_id: databaseId, provider }])
-        .select()
-        .single();
+    const { rows: newHistoryRows } = await query(
+        'INSERT INTO chat_history (user_id, database_id, provider) VALUES ($1, $2, $3) RETURNING id',
+        [userId, databaseId, provider]
+    );
 
-    if (error) throw error;
-    return newHistory.id;
+    return newHistoryRows[0].id;
 }
 
 async function saveMessage(chatHistoryId, role, message) {
-    await supabase
-        .from('chat_messages')
-        .insert([{ chat_history_id: chatHistoryId, role, message }]);
+    await query(
+        'INSERT INTO chat_messages (chat_history_id, role, message) VALUES ($1, $2, $3)',
+        [chatHistoryId, role, message]
+    );
 }
 
 function parseResult(output) {

@@ -1,13 +1,7 @@
 import { jest } from "@jest/globals";
 
-jest.unstable_mockModule("../backend/lib/supabase.js", () => ({
-    supabase: {
-        from: jest.fn().mockReturnThis(),
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        single: jest.fn(),
-        insert: jest.fn().mockReturnThis(),
-    },
+jest.unstable_mockModule("../backend/lib/db.js", () => ({
+    query: jest.fn(),
 }));
 
 jest.unstable_mockModule("bcryptjs", () => ({
@@ -22,7 +16,7 @@ jest.unstable_mockModule("../backend/utils/jwt.js", () => ({
     verifyJwt: jest.fn(),
 }));
 
-const { supabase } = await import("../backend/lib/supabase.js");
+const { query } = await import("../backend/lib/db.js");
 const { default: bcrypt } = await import("bcryptjs");
 const { generateJwt } = await import("../backend/utils/jwt.js");
 const { default: app } = await import("../app.js");
@@ -36,9 +30,9 @@ describe("Auth API", () => {
     describe("POST /auth/register", () => {
         test("should register a new user", async () => {
             const userData = { email: "test@example.com", password: "password123" };
-            supabase.single
-                .mockResolvedValueOnce({ data: null, error: null }) // Check existing
-                .mockResolvedValueOnce({ data: { id: "123" }, error: null }); // Insert new
+            query
+                .mockResolvedValueOnce({ rows: [], error: null }) // Check existing
+                .mockResolvedValueOnce({ rows: [{ id: "123" }], error: null }); // Insert new
 
             bcrypt.hash.mockResolvedValue("hashed-password");
 
@@ -53,7 +47,7 @@ describe("Auth API", () => {
 
         test("should return 409 if user already exists", async () => {
             const userData = { email: "test@example.com", password: "password123" };
-            supabase.single.mockResolvedValue({ data: { id: "123" }, error: null });
+            query.mockResolvedValue({ rows: [{ id: "123" }], error: null });
 
             const res = await request(app)
                 .post("/auth/register")
@@ -69,7 +63,7 @@ describe("Auth API", () => {
             const credentials = { email: "test@example.com", password: "password123" };
             const user = { id: "123", email: "test@example.com", password: "hashed-password" };
 
-            supabase.single.mockResolvedValue({ data: user, error: null });
+            query.mockResolvedValue({ rows: [user], error: null });
             bcrypt.compare.mockResolvedValue(true);
             generateJwt.mockReturnValue("mock-token");
 
@@ -86,7 +80,7 @@ describe("Auth API", () => {
             const credentials = { email: "test@example.com", password: "wrong-password" };
             const user = { id: "123", email: "test@example.com", password: "hashed-password" };
 
-            supabase.single.mockResolvedValue({ data: user, error: null });
+            query.mockResolvedValue({ rows: [user], error: null });
             bcrypt.compare.mockResolvedValue(false);
 
             const res = await request(app)

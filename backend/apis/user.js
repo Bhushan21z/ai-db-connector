@@ -1,5 +1,5 @@
 import express from "express";
-import { supabase } from "../lib/supabase.js";
+import { query } from "../lib/db.js";
 import { generateJwt } from "../utils/jwt.js";
 import { authMiddleware } from "../middleware/auth.js";
 
@@ -8,15 +8,12 @@ const router = express.Router();
 // GET /user/config - Retrieve DB credentials
 router.get("/config", authMiddleware, async (req, res) => {
     try {
-        const { data: config, error } = await supabase
-            .from('database')
-            .select('*')
-            .eq('user_id', req.user.id)
-            .single();
+        const { rows } = await query(
+            'SELECT * FROM "database" WHERE user_id = $1',
+            [req.user.id]
+        );
 
-        if (error && error.code !== 'PGRST116') {
-            throw error;
-        }
+        const config = rows[0];
 
         res.json({
             success: true,
@@ -42,11 +39,12 @@ router.post("/config", authMiddleware, async (req, res) => {
     const { mongo, supabase: sbConfig } = req.body;
 
     try {
-        const { data: existing } = await supabase
-            .from('database')
-            .select('id')
-            .eq('user_id', req.user.id)
-            .single();
+        const { rows: existingRows } = await query(
+            'SELECT id FROM "database" WHERE user_id = $1',
+            [req.user.id]
+        );
+
+        const existing = existingRows[0];
 
         const updateData = {
             api_key: mongo?.uri,
@@ -57,16 +55,15 @@ router.post("/config", authMiddleware, async (req, res) => {
         };
 
         if (existing) {
-            const { error } = await supabase
-                .from('database')
-                .update(updateData)
-                .eq('id', existing.id);
-            if (error) throw error;
+            await query(
+                'UPDATE "database" SET api_key = $1, db_name = $2, supabase_url = $3, supabase_key = $4, provider = $5 WHERE id = $6',
+                [updateData.api_key, updateData.db_name, updateData.supabase_url, updateData.supabase_key, updateData.provider, existing.id]
+            );
         } else {
-            const { error } = await supabase
-                .from('database')
-                .insert([{ user_id: req.user.id, ...updateData }]);
-            if (error) throw error;
+            await query(
+                'INSERT INTO "database" (user_id, api_key, db_name, supabase_url, supabase_key, provider) VALUES ($1, $2, $3, $4, $5, $6)',
+                [req.user.id, updateData.api_key, updateData.db_name, updateData.supabase_url, updateData.supabase_key, updateData.provider]
+            );
         }
 
         res.json({ success: true, message: "Configuration saved." });
@@ -89,12 +86,10 @@ router.post("/token", authMiddleware, async (req, res) => {
         );
 
         // Save to database table
-        const { error } = await supabase
-            .from('database')
-            .update({ api_token: apiToken })
-            .eq('user_id', req.user.id);
-
-        if (error) throw error;
+        await query(
+            'UPDATE "database" SET api_token = $1 WHERE user_id = $2',
+            [apiToken, req.user.id]
+        );
 
         res.json({ success: true, apiToken });
     } catch (err) {

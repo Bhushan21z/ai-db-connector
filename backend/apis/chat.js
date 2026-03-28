@@ -1,5 +1,5 @@
 import express from "express";
-import { supabase } from "../lib/supabase.js";
+import { query } from "../lib/db.js";
 import { authMiddleware } from "../middleware/auth.js";
 
 const router = express.Router();
@@ -8,18 +8,16 @@ const router = express.Router();
 router.get("/", authMiddleware, async (req, res) => {
     try {
         const { provider } = req.query;
-        const query = supabase
-            .from('chat_history')
-            .select('id')
-            .eq('user_id', req.user.id);
+
+        let sql = 'SELECT id FROM chat_history WHERE user_id = $1';
+        let params = [req.user.id];
 
         if (provider) {
-            query.eq('provider', provider);
+            sql += ' AND provider = $2';
+            params.push(provider);
         }
 
-        const { data: histories, error: historyError } = await query;
-
-        if (historyError) throw historyError;
+        const { rows: histories } = await query(sql, params);
 
         if (!histories || histories.length === 0) {
             return res.json({ success: true, history: [] });
@@ -27,13 +25,10 @@ router.get("/", authMiddleware, async (req, res) => {
 
         const historyIds = histories.map(h => h.id);
 
-        const { data: messages, error: msgError } = await supabase
-            .from('chat_messages')
-            .select('*')
-            .in('chat_history_id', historyIds)
-            .order('id', { ascending: true });
-
-        if (msgError) throw msgError;
+        const { rows: messages } = await query(
+            'SELECT * FROM chat_messages WHERE chat_history_id = ANY($1) ORDER BY id ASC',
+            [historyIds]
+        );
 
         const formattedHistory = messages.map(m => {
             let content = m.message;
@@ -64,29 +59,29 @@ router.get("/", authMiddleware, async (req, res) => {
 router.delete("/", authMiddleware, async (req, res) => {
     try {
         const { provider } = req.query;
-        const query = supabase
-            .from('chat_history')
-            .select('id')
-            .eq('user_id', req.user.id);
+
+        let sql = 'SELECT id FROM chat_history WHERE user_id = $1';
+        let params = [req.user.id];
 
         if (provider) {
-            query.eq('provider', provider);
+            sql += ' AND provider = $2';
+            params.push(provider);
         }
 
-        const { data: histories } = await query;
+        const { rows: histories } = await query(sql, params);
 
         if (histories && histories.length > 0) {
             const ids = histories.map(h => h.id);
 
-            await supabase
-                .from('chat_messages')
-                .delete()
-                .in('chat_history_id', ids);
+            await query(
+                'DELETE FROM chat_messages WHERE chat_history_id = ANY($1)',
+                [ids]
+            );
 
-            await supabase
-                .from('chat_history')
-                .delete()
-                .in('id', ids);
+            await query(
+                'DELETE FROM chat_history WHERE id = ANY($1)',
+                [ids]
+            );
         }
 
         res.json({ success: true, message: "Chat history cleared." });

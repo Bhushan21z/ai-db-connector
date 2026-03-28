@@ -1,5 +1,5 @@
 import { verifyJwt } from "../utils/jwt.js";
-import { supabase } from "../lib/supabase.js";
+import { query } from "../lib/db.js";
 
 export const authMiddleware = async (req, res, next) => {
     const header = req.headers.authorization;
@@ -20,13 +20,14 @@ export const authMiddleware = async (req, res, next) => {
 
         // If it's an API token, verify it exists in the database
         if (decoded.type === 'api_token') {
-            const { data, error } = await supabase
-                .from('database')
-                .select('user_id')
-                .eq('api_token', token)
-                .single();
+            const { rows } = await query(
+                'SELECT user_id FROM "database" WHERE api_token = $1',
+                [token]
+            );
 
-            if (error || !data || data.user_id !== decoded.id) {
+            const data = rows[0];
+
+            if (!data || data.user_id !== decoded.id) {
                 return res.status(401).json({ error: "Invalid or revoked API token." });
             }
         }

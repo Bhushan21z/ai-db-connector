@@ -1,18 +1,12 @@
 import { jest } from "@jest/globals";
 
-jest.unstable_mockModule("../backend/lib/supabase.js", () => ({
-    supabase: {
-        from: jest.fn().mockReturnThis(),
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        single: jest.fn(),
-        insert: jest.fn().mockReturnThis(),
-    },
+jest.unstable_mockModule("../backend/lib/db.js", () => ({
+    query: jest.fn(),
 }));
 
 jest.unstable_mockModule("../backend/middleware/auth.js", () => ({
     authMiddleware: (req, res, next) => {
-        req.user = { id: "123" };
+        req.user = { id: 123 };
         next();
     },
 }));
@@ -42,7 +36,7 @@ jest.unstable_mockModule("pg", () => ({
     }
 }));
 
-const { supabase } = await import("../backend/lib/supabase.js");
+const { query } = await import("../backend/lib/db.js");
 const { default: app } = await import("../app.js");
 const { MongoClient } = await import("mongodb");
 const { run } = await import("@openai/agents");
@@ -56,9 +50,11 @@ describe("Agent API", () => {
     describe("POST /agent/mongo", () => {
         test("should run mongo agent successfully", async () => {
             const config = { api_key: "mongodb://uri", db_name: "test-db", id: "db1" };
-            supabase.single
-                .mockResolvedValueOnce({ data: config, error: null }) // config
-                .mockResolvedValueOnce({ data: { id: "h1" }, error: null }); // getOrCreateHistory
+            query
+                .mockResolvedValueOnce({ rows: [config], error: null }) // config
+                .mockResolvedValueOnce({ rows: [{ id: "h1" }], error: null }) // getOrCreateHistory
+                .mockResolvedValueOnce({ rows: [], error: null }) // saveMessage user
+                .mockResolvedValueOnce({ rows: [], error: null }); // saveMessage assistant
 
             const mockDb = {};
             const mockClient = {
@@ -88,9 +84,11 @@ describe("Agent API", () => {
     describe("POST /agent/supabase", () => {
         test("should run supabase agent successfully", async () => {
             const config = { supabase_url: "https://ref.supabase.co", supabase_key: "pass", id: "db1" };
-            supabase.single
-                .mockResolvedValueOnce({ data: config, error: null }) // config
-                .mockResolvedValueOnce({ data: { id: "h1" }, error: null }); // getOrCreateHistory
+            query
+                .mockResolvedValueOnce({ rows: [config], error: null }) // config
+                .mockResolvedValueOnce({ rows: [{ id: "h1" }], error: null }) // getOrCreateHistory
+                .mockResolvedValueOnce({ rows: [], error: null }) // saveMessage user
+                .mockResolvedValueOnce({ rows: [], error: null }); // saveMessage assistant
 
             run.mockResolvedValue({ finalOutput: '{"result": "success"}', toolCalls: [] });
 

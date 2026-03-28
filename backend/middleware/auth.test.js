@@ -4,17 +4,12 @@ jest.unstable_mockModule("../utils/jwt.js", () => ({
     verifyJwt: jest.fn(),
 }));
 
-jest.unstable_mockModule("../lib/supabase.js", () => ({
-    supabase: {
-        from: jest.fn().mockReturnThis(),
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        single: jest.fn(),
-    },
+jest.unstable_mockModule("../lib/db.js", () => ({
+    query: jest.fn(),
 }));
 
 const { verifyJwt } = await import("../utils/jwt.js");
-const { supabase } = await import("../lib/supabase.js");
+const { query } = await import("../lib/db.js");
 const { authMiddleware } = await import("./auth.js");
 
 describe("Auth Middleware", () => {
@@ -50,7 +45,7 @@ describe("Auth Middleware", () => {
     });
 
     test("should call next() if token is valid (user type)", async () => {
-        const decoded = { id: "123", type: "user" };
+        const decoded = { id: 123, type: "user" };
         req.headers.authorization = "Bearer valid-token";
         verifyJwt.mockReturnValue(decoded);
 
@@ -60,27 +55,29 @@ describe("Auth Middleware", () => {
     });
 
     test("should verify API token against database", async () => {
-        const decoded = { id: "123", type: "api_token" };
+        const decoded = { id: 123, type: "api_token" };
         const token = "valid-api-token";
         req.headers.authorization = `Bearer ${token}`;
         verifyJwt.mockReturnValue(decoded);
 
-        supabase.single.mockResolvedValue({ data: { user_id: "123" }, error: null });
+        query.mockResolvedValue({ rows: [{ user_id: 123 }], error: null });
 
         await authMiddleware(req, res, next);
-        expect(supabase.from).toHaveBeenCalledWith("database");
-        expect(supabase.eq).toHaveBeenCalledWith("api_token", token);
+        expect(query).toHaveBeenCalledWith(
+            expect.stringContaining('SELECT user_id FROM "database" WHERE api_token = $1'),
+            [token]
+        );
         expect(req.user).toBe(decoded);
         expect(next).toHaveBeenCalled();
     });
 
     test("should return 401 if API token is invalid in database", async () => {
-        const decoded = { id: "123", type: "api_token" };
+        const decoded = { id: 123, type: "api_token" };
         const token = "invalid-api-token";
         req.headers.authorization = `Bearer ${token}`;
         verifyJwt.mockReturnValue(decoded);
 
-        supabase.single.mockResolvedValue({ data: null, error: new Error("Not found") });
+        query.mockResolvedValue({ rows: [], error: null });
 
         await authMiddleware(req, res, next);
         expect(res.status).toHaveBeenCalledWith(401);

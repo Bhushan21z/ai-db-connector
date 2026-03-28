@@ -1,6 +1,6 @@
 import express from "express";
 import bcrypt from "bcryptjs";
-import { supabase } from "../lib/supabase.js";
+import { query } from "../lib/db.js";
 import { generateJwt } from "../utils/jwt.js";
 
 const router = express.Router();
@@ -14,25 +14,23 @@ router.post("/register", async (req, res) => {
 
     try {
         // Check if user exists
-        const { data: existing } = await supabase
-            .from('user')
-            .select('id')
-            .eq('email', email)
-            .single();
+        const { rows: existingRows } = await query(
+            'SELECT id FROM "user" WHERE email = $1',
+            [email]
+        );
 
-        if (existing) {
+        if (existingRows.length > 0) {
             return res.status(409).json({ error: "User already exists." });
         }
 
         const hashedPw = await bcrypt.hash(password, 10);
 
-        const { data: newUser, error: insertError } = await supabase
-            .from('user')
-            .insert([{ email, password: hashedPw }])
-            .select()
-            .single();
+        const { rows: newUserRows } = await query(
+            'INSERT INTO "user" (email, password) VALUES ($1, $2) RETURNING *',
+            [email, hashedPw]
+        );
 
-        if (insertError) throw insertError;
+        const newUser = newUserRows[0];
 
         res.json({
             success: true,
@@ -50,13 +48,14 @@ router.post("/login", async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        const { data: user, error } = await supabase
-            .from('user')
-            .select('*')
-            .eq('email', email)
-            .single();
+        const { rows: userRows } = await query(
+            'SELECT * FROM "user" WHERE email = $1',
+            [email]
+        );
 
-        if (error || !user) {
+        const user = userRows[0];
+
+        if (!user) {
             return res.status(404).json({ error: "User not found." });
         }
 
