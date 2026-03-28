@@ -11,17 +11,16 @@ RUN npm run build
 
 
 # ---------- Production Stage ----------
-FROM nginx:alpine
+FROM node:22-alpine
 
-# Remove default nginx site
-RUN rm -rf /usr/share/nginx/html/*
+WORKDIR /app
 
-# Copy build output to nginx
-COPY --from=build /frontend/dist /usr/share/nginx/html
+# install static server
+RUN npm install -g serve
 
-# Copy custom nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# copy built files
+COPY --from=build /frontend/dist ./dist
 
-EXPOSE 80
+EXPOSE 3000
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["serve", "-s", "dist", "-l", "3000"]

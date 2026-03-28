@@ -5,7 +5,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: backend
     ports:
       - "5000"
     env_file:
@@ -16,16 +15,12 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: frontend
-    volumes:
-      - /etc/letsencrypt:/etc/letsencrypt:ro
     ports:
-      - "80:80"
-      - "443:443"
+      - "3000:3000"
     depends_on:
       - backend
     restart: always
 
 networks:
   default:
-    enable_ipv6: true
+    name: app1-network
